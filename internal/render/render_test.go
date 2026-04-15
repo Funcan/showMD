@@ -329,3 +329,206 @@ func TestRender_WrapDisabled(t *testing.T) {
 		t.Errorf("expected 1 line when wrap=false, got %d: %q", len(lines), out)
 	}
 }
+
+func TestRender_WrapEnabled_WrapsAtWidth(t *testing.T) {
+	f := false
+	w := 10
+	out := render.Strip("one two three four five six seven eight nine ten",
+		types.RenderOptions{Color: &f, Hyperlinks: &f, Wrap: boolTrue(), Width: &w})
+	lines := strings.Split(out, "\n")
+	for _, line := range lines {
+		if len(line) > 10 {
+			t.Errorf("line exceeds width 10: %q", line)
+		}
+	}
+}
+
+// --- Soft and hard line breaks ---
+
+func TestRender_SoftLineBreak_CollapsesToSpace(t *testing.T) {
+	f := false
+	w := 80
+	out := strings.TrimRight(render.Strip("Hello\nworld",
+		types.RenderOptions{Color: &f, Hyperlinks: &f, Wrap: boolTrue(), Width: &w}), "\n")
+	if out != "Hello world" {
+		t.Errorf("soft break should collapse to space, got %q", out)
+	}
+}
+
+func TestRender_SoftLineBreak_TrimsIndentation(t *testing.T) {
+	f := false
+	w := 200
+	out := strings.TrimRight(render.Strip("Hello\n  world",
+		types.RenderOptions{Color: &f, Hyperlinks: &f, Width: &w}), "\n")
+	if out != "Hello world" {
+		t.Errorf("soft break should trim indentation, got %q", out)
+	}
+}
+
+func TestRender_HardLineBreak_KeepsSplit(t *testing.T) {
+	f := false
+	w := 80
+	out := strings.TrimRight(render.Strip("line one  \nline two",
+		types.RenderOptions{Color: &f, Hyperlinks: &f, Wrap: boolTrue(), Width: &w}), "\n")
+	if len(strings.Split(out, "\n")) < 2 {
+		t.Errorf("hard break (two-space) should produce multiple lines, got %q", out)
+	}
+}
+
+func TestRender_HardBreakWithSurroundingSoftBreaks(t *testing.T) {
+	f := false
+	w := 200
+	out := strings.TrimRight(render.Strip("a\nb  \nc",
+		types.RenderOptions{Color: &f, Hyperlinks: &f, Width: &w}), "\n")
+	if !strings.Contains(out, "a b\nc") {
+		t.Errorf("expected 'a b\\nc', got %q", out)
+	}
+}
+
+// --- Inline HTML ---
+
+func TestRender_InlineHTML_Ignored(t *testing.T) {
+	out := strings.TrimRight(stripPlain("<div>ignored</div>"), "\n")
+	if out != "" {
+		t.Errorf("inline HTML should be ignored, got %q", out)
+	}
+}
+
+// --- Hyperlinks ---
+
+func TestRender_Hyperlinks_URLSuffix_WhenOff(t *testing.T) {
+	out := stripPlain("[link](https://example.com)")
+	if !strings.Contains(out, "link (https://example.com)") {
+		t.Errorf("expected URL suffix when hyperlinks off, got %q", out)
+	}
+}
+
+func TestRender_Hyperlinks_OSC8_WhenEnabled(t *testing.T) {
+	tr := true
+	out := render.Render("[x](https://example.com)", types.RenderOptions{
+		Color:      &tr,
+		Hyperlinks: &tr,
+		Wrap:       boolFalse(),
+	})
+	if !strings.Contains(out, "\x1b]8;;https://example.com\x07x\x1b]8;;\x07") {
+		t.Errorf("expected OSC-8 hyperlink, got %q", out)
+	}
+}
+
+func TestRender_Hyperlinks_OSC8_DisabledWhenColorFalse(t *testing.T) {
+	fl := false
+	tr := true
+	out := render.Render("[x](https://example.com)", types.RenderOptions{
+		Color:      &fl,
+		Hyperlinks: &tr,
+		Wrap:       boolFalse(),
+	})
+	if strings.Contains(out, "\x1b]8;;") {
+		t.Errorf("OSC-8 should be disabled when color=false, got %q", out)
+	}
+	if !strings.Contains(out, "x (https://example.com)") {
+		t.Errorf("expected plain URL suffix when color=false, got %q", out)
+	}
+}
+
+// --- Loose lists ---
+
+func TestRender_LooseList_HasBlankLineBetweenItems(t *testing.T) {
+	out := stripPlain("- item 1\n\n- item 2")
+	blanks := 0
+	for _, l := range strings.Split(out, "\n") {
+		if l == "" {
+			blanks++
+		}
+	}
+	if blanks == 0 {
+		t.Errorf("loose list should have blank lines, got %q", out)
+	}
+}
+
+func TestRender_List_SoftBreakInsideItem(t *testing.T) {
+	md := "- Section IV: A concluding line that was \"typed on 2025-12-18 with a\n  stubborn cursor.\""
+	f := false
+	w := 200
+	out := strings.TrimRight(render.Strip(md, types.RenderOptions{Color: &f, Hyperlinks: &f, Width: &w}), "\n")
+	if !strings.Contains(out, "with a stubborn cursor.") {
+		t.Errorf("soft break inside list item should collapse, got %q", out)
+	}
+	if strings.Contains(out, "\n\n") {
+		t.Errorf("should not have double blank lines, got %q", out)
+	}
+}
+
+// --- Theme/color ---
+
+func TestRender_Theme_InlineVsBlockCodeDistinct(t *testing.T) {
+	inlineColor := "\x1b[31m" // red
+	blockColor := "\x1b[32m"  // green
+	tr := true
+	fl := false
+	out := render.Render("`inline`\n\n```\nblock\n```", types.RenderOptions{
+		Color:      &tr,
+		Hyperlinks: &fl,
+		Wrap:       boolFalse(),
+		Theme: &types.Theme{
+			InlineCode: types.StyleIntent{Color: "red"},
+			BlockCode:  types.StyleIntent{Color: "green"},
+		},
+	})
+	if !strings.Contains(out, inlineColor) {
+		t.Errorf("expected red inline code, got %q", out)
+	}
+	if !strings.Contains(out, blockColor) {
+		t.Errorf("expected green block code, got %q", out)
+	}
+}
+
+func TestRender_Theme_CodeFallback(t *testing.T) {
+	tr := true
+	fl := false
+	out := render.Render("`x`\n\n```\ny\n```", types.RenderOptions{
+		Color:      &tr,
+		Hyperlinks: &fl,
+		Wrap:       boolFalse(),
+		Theme:      &types.Theme{Code: types.StyleIntent{Color: "red"}},
+	})
+	if !strings.Contains(out, "\x1b[31m") {
+		t.Errorf("expected red from code fallback, got %q", out)
+	}
+}
+
+func TestRender_DefaultTheme_Colors(t *testing.T) {
+	tr := true
+	fl := false
+	out := render.Render("`inline`\n\n```\nblock\n```\n\n# H", types.RenderOptions{
+		Color:      &tr,
+		Hyperlinks: &fl,
+		Wrap:       boolFalse(),
+		CodeBox:    boolFalse(),
+	})
+	if !strings.Contains(out, "\x1b[36m") { // cyan inline code
+		t.Errorf("expected cyan inline code, got %q", out)
+	}
+	if !strings.Contains(out, "\x1b[32m") { // green block code
+		t.Errorf("expected green block code, got %q", out)
+	}
+}
+
+func TestRender_HighlighterHook(t *testing.T) {
+	tr := true
+	fl := false
+	out := render.Render("```\ncode\n```", types.RenderOptions{
+		Color:       &tr,
+		Hyperlinks:  &fl,
+		Wrap:        boolFalse(),
+		Highlighter: func(code, _ string) string { return strings.ToUpper(code) },
+	})
+	if !strings.Contains(out, "CODE") {
+		t.Errorf("expected highlighter to uppercase code, got %q", out)
+	}
+}
+
+// helpers for bool pointers not in renderPlain scope
+
+func boolTrue() *bool  { t := true; return &t }
+func boolFalse() *bool { f := false; return &f }
