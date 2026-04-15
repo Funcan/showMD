@@ -10,6 +10,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.23 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
+	github.com/yuin/goldmark v1.8.2 // indirect
 	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/term v0.42.0 // indirect
 )
