@@ -273,19 +273,28 @@ func truncateCell(text string, width int, ellipsis string) string {
 	if wrap.VisibleWidth(text) <= width {
 		return text
 	}
-	ellipsisRunes := []rune(ellipsis)
-	if width <= len(ellipsisRunes) {
-		if width < len(ellipsisRunes) {
-			return string(ellipsisRunes[:width])
-		}
+	ellipsisWidth := wrap.VisibleWidth(ellipsis)
+	if width < ellipsisWidth {
+		// Not enough room even for the ellipsis; return nothing.
+		return ""
+	}
+	if width == ellipsisWidth {
 		return ellipsis
 	}
-	target := width - len(ellipsisRunes)
+	target := width - ellipsisWidth
+	// Accumulate runes until we'd exceed the target column budget.
+	var col int
 	runes := []rune(text)
-	if target > len(runes) {
-		target = len(runes)
+	i := 0
+	for i < len(runes) {
+		rw := wrap.VisibleWidth(string(runes[i]))
+		if col+rw > target {
+			break
+		}
+		col += rw
+		i++
 	}
-	return string(runes[:target]) + ellipsis
+	return string(runes[:i]) + ellipsis
 }
 
 // getAlign returns the alignment for column idx, defaulting to AlignLeft.
@@ -295,5 +304,3 @@ func getAlign(aligns []east.Alignment, idx int) east.Alignment {
 	}
 	return east.AlignLeft
 }
-
-
