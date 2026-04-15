@@ -1,7 +1,7 @@
 BIN := showmd
 CMD := ./cmd/showmd
 
-.PHONY: build test lint vet tidy clean
+.PHONY: build test lint tidy clean
 
 build:
 	go build -o $(BIN) $(CMD)
@@ -9,7 +9,10 @@ build:
 test:
 	go test ./...
 
-lint: vet
+fmt:
+	go fmt ./...
+
+lint: fmt vet
 	@if command -v staticcheck >/dev/null 2>&1; then staticcheck ./...; fi
 
 vet:
