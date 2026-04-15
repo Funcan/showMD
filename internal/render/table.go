@@ -77,10 +77,10 @@ func renderTable(n ast.Node, ctx *renderContext) string {
 	}
 
 	pad := ctx.opts.tablePadding
-	padStr := strings.Repeat(" ", max0(pad))
+	padStr := strings.Repeat(" ", max(pad, 0))
 	ellipsis := ctx.opts.tableEllipsis
-	minContent := max1(len([]rune(ellipsis)) + 1)
-	minColWidth := max1(pad*2 + minContent)
+	minContent := max(len([]rune(ellipsis))+1, 1)
+	minColWidth := max(pad*2+minContent, 1)
 
 	// Calculate initial column widths.
 	widths := make([]int, colCount)
@@ -93,7 +93,7 @@ func renderTable(n ast.Node, ctx *renderContext) string {
 				break
 			}
 			padded := padStr + cell + padStr
-			w := min_(maxCol, wrap.VisibleWidth(padded))
+			w := min(maxCol, wrap.VisibleWidth(padded))
 			if w > widths[idx] {
 				widths[idx] = w
 			}
@@ -102,7 +102,10 @@ func renderTable(n ast.Node, ctx *renderContext) string {
 
 	// Shrink columns if table is too wide.
 	if ctx.opts.wrap && ctx.opts.width > 0 {
-		totalWidth := sum(widths) + 3*colCount + 1
+		totalWidth := 3*colCount + 1
+		for _, w := range widths {
+			totalWidth += w
+		}
 		over := totalWidth - ctx.opts.width
 		for over > 0 {
 			maxW := widths[0]
@@ -135,7 +138,7 @@ func renderTable(n ast.Node, ctx *renderContext) string {
 			if idx < len(cells) {
 				cell = cells[idx]
 			}
-			target := max1(widths[idx] - pad*2)
+			target := max(widths[idx]-pad*2, 1)
 			var content string
 			if ctx.opts.tableTruncate {
 				content = truncateCell(cell, target, ellipsis)
@@ -293,33 +296,4 @@ func getAlign(aligns []east.Alignment, idx int) east.Alignment {
 	return east.AlignLeft
 }
 
-// Helper math functions.
 
-func max0(n int) int {
-	if n < 0 {
-		return 0
-	}
-	return n
-}
-
-func max1(n int) int {
-	if n < 1 {
-		return 1
-	}
-	return n
-}
-
-func min_(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func sum(ns []int) int {
-	total := 0
-	for _, n := range ns {
-		total += n
-	}
-	return total
-}

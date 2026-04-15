@@ -253,10 +253,7 @@ func flattenListOfCode(n ast.Node, src []byte) *Block {
 
 // --- Pass 3: tag diff blocks ---
 
-var (
-	reDiffHeader = regexp.MustCompile(`(?m)^(diff --git|--- a/|\+\+\+ b/|@@ )`)
-	reDiffMarker = regexp.MustCompile(`(?m)^[+\-@]`)
-)
+var reDiffMarker = regexp.MustCompile(`(?m)^[+\-@]`)
 
 // looksLikeDiff reports whether text looks like a unified diff.
 // Mirrors the TS looksLikeDiff function.

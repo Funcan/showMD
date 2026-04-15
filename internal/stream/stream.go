@@ -118,8 +118,10 @@ func (s *Streamer) Reset() {
 
 // --- internal helpers ---
 
+var newlineReplacer = strings.NewReplacer("\r\n", "\n", "\r", "\n")
+
 func normalizeNewlines(s string) string {
-	return strings.NewReplacer("\r\n", "\n", "\r", "\n").Replace(s)
+	return newlineReplacer.Replace(s)
 }
 
 var reFenceStart = regexp.MustCompile("^(```+|~~~+)")
