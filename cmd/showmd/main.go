@@ -35,7 +35,7 @@ Options:
   --no-links            Disable OSC-8 hyperlinks
   --theme=NAME          Theme: default|dim|bright|solarized|monochrome|contrast
   --list-indent N       Spaces per list nesting level (default: 2)
-  --quote-prefix STR    Blockquote prefix (default: "│ ")
+  --quote-prefix STR    Blockquote prefix (default: "> ")
   --table-border=STR    unicode|ascii|none (default: unicode)
   --table-padding N     Spaces around cell content (default: 1)
   --table-dense         Omit mid-table separator row
@@ -44,6 +44,7 @@ Options:
   --code-wrap=BOOL      Wrap long code lines (default: true)
   --code-box=BOOL       Draw box around code blocks (default: true)
   --code-gutter=BOOL    Show line numbers in code blocks (default: false)
+  --squash-paragraphs   Remove blank line between consecutive paragraphs
   --help, -h            Show this help
   --version             Print version and exit
 `
@@ -179,6 +180,9 @@ func parseArgs(argv []string) (*cliArgs, error) {
 			a.opts.CodeGutter = true
 		case arg == "--code-gutter=false":
 			a.opts.CodeGutter = false
+
+		case arg == "--squash-paragraphs":
+			a.opts.SquashParagraphs = true
 
 		case arg == "-":
 			// Explicit stdin positional arg — leave a.in empty.

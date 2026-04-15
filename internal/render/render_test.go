@@ -238,7 +238,7 @@ func TestRender_Blockquote(t *testing.T) {
 	if !strings.Contains(out, "This is a quote.") {
 		t.Errorf("expected quote text, got: %q", out)
 	}
-	if !strings.Contains(out, "│") {
+	if !strings.Contains(out, "> ") {
 		t.Errorf("expected quote prefix, got: %q", out)
 	}
 }
@@ -528,7 +528,60 @@ func TestRender_HighlighterHook(t *testing.T) {
 	}
 }
 
-// helpers for bool pointers not in renderPlain scope
+// --- SquashParagraphs ---
+
+func TestRender_ParagraphSpacing_BlankLineByDefault(t *testing.T) {
+	out := renderPlain("first paragraph\n\nsecond paragraph\n")
+	lines := strings.Split(out, "\n")
+	hasBlank := false
+	for _, l := range lines {
+		if l == "" {
+			hasBlank = true
+			break
+		}
+	}
+	if !hasBlank {
+		t.Errorf("expected blank line between paragraphs by default, got: %q", out)
+	}
+}
+
+func TestRender_ParagraphSpacing_SquashRemovesBlankLine(t *testing.T) {
+	f := false
+	out := render.Render("first paragraph\n\nsecond paragraph\n", types.RenderOptions{
+		Color:            &f,
+		Hyperlinks:       &f,
+		SquashParagraphs: true,
+	})
+	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
+	for _, l := range lines {
+		if l == "" {
+			t.Errorf("expected no blank lines when SquashParagraphs=true, got: %q", out)
+			return
+		}
+	}
+}
+
+// --- QuotePrefix default ---
+
+func TestRender_BlockquoteDefaultPrefix(t *testing.T) {
+	out := renderPlain("> quoted\n")
+	if !strings.HasPrefix(strings.TrimLeft(out, "\n"), "> ") {
+		t.Errorf("expected default blockquote prefix '> ', got: %q", out)
+	}
+}
+
+func TestRender_BlockquoteCustomPrefix(t *testing.T) {
+	f := false
+	p := "│ "
+	out := render.Render("> quoted\n", types.RenderOptions{
+		Color:       &f,
+		Hyperlinks:  &f,
+		QuotePrefix: &p,
+	})
+	if !strings.Contains(out, "│ quoted") {
+		t.Errorf("expected custom blockquote prefix '│ ', got: %q", out)
+	}
+}
 
 func boolTrue() *bool  { t := true; return &t }
 func boolFalse() *bool { f := false; return &f }

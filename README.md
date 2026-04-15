@@ -2,7 +2,11 @@ A CLI to view well rendered markdown in the terminal
 ====================================================
 
 A port of https://www.github.com/steipete/markdansi from typescript to golang,
-so that I can have a single binary. Most of the heavy lifting done by copilot.
+so that I can have a single binary. Most of the heavy lifting for the initial
+port was done by copilot.
+
+There are minor changes in the output to match my preferences, so results
+aren't identical to the upstream.
 
 This should absolutely be considered a derivative work of the above, despite
 efforts being made to generate intermediate human readable representations of
@@ -75,7 +79,7 @@ showmd --no-color README.md --out plain.txt
 | `--no-links` | — | Disable OSC-8 hyperlinks |
 | `--theme NAME` | `default` | Color theme: `default` `dim` `bright` `solarized` `monochrome` `contrast` |
 | `--list-indent N` | `2` | Spaces per list nesting level |
-| `--quote-prefix STR` | `│ ` | Blockquote line prefix |
+| `--quote-prefix STR` | `> ` | Blockquote line prefix |
 | `--table-border STR` | `unicode` | Table border style: `unicode` `ascii` `none` |
 | `--table-padding N` | `1` | Spaces of padding inside table cells |
 | `--table-dense` | — | Omit the mid-table separator row |
@@ -84,6 +88,7 @@ showmd --no-color README.md --out plain.txt
 | `--code-wrap=BOOL` | `true` | Wrap long code lines at `--width` |
 | `--code-box=BOOL` | `true` | Draw a Unicode box around multi-line code blocks |
 | `--code-gutter=BOOL` | `false` | Show line numbers in code blocks |
+| `--squash-paragraphs` | — | Remove blank line between consecutive paragraphs |
 | `--help`, `-h` | — | Print help and exit |
 
 ---

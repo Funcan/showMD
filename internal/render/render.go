@@ -17,22 +17,23 @@ import (
 
 // resolvedOptions holds all render options with defaults applied.
 type resolvedOptions struct {
-	wrap          bool
-	width         int // 0 = no fixed width (only meaningful when wrap=false)
-	color         bool
-	hyperlinks    bool
-	theme         types.Theme
-	listIndent    int
-	quotePrefix   string
-	tableBorder   types.TableBorder
-	tablePadding  int
-	tableDense    bool
-	tableTruncate bool
-	tableEllipsis string
-	codeBox       bool
-	codeGutter    bool
-	codeWrap      bool
-	highlighter   types.Highlighter
+	wrap             bool
+	width            int // 0 = no fixed width (only meaningful when wrap=false)
+	color            bool
+	hyperlinks       bool
+	theme            types.Theme
+	listIndent       int
+	quotePrefix      string
+	tableBorder      types.TableBorder
+	tablePadding     int
+	tableDense       bool
+	tableTruncate    bool
+	tableEllipsis    string
+	codeBox          bool
+	codeGutter       bool
+	codeWrap         bool
+	squashParagraphs bool
+	highlighter      types.Highlighter
 }
 
 func resolveOptions(opts types.RenderOptions) resolvedOptions {
@@ -70,22 +71,23 @@ func resolveOptions(opts types.RenderOptions) resolvedOptions {
 	}
 
 	return resolvedOptions{
-		wrap:          doWrap,
-		width:         width,
-		color:         color,
-		hyperlinks:    useHyperlinks,
-		theme:         th,
-		listIndent:    types.Int(opts.ListIndent, 2),
-		quotePrefix:   types.String(opts.QuotePrefix, "│ "),
-		tableBorder:   tableBorder,
-		tablePadding:  types.Int(opts.TablePadding, 1),
-		tableDense:    opts.TableDense,
-		tableTruncate: types.Bool(opts.TableTruncate, true),
-		tableEllipsis: types.String(opts.TableEllipsis, "…"),
-		codeBox:       types.Bool(opts.CodeBox, true),
-		codeGutter:    opts.CodeGutter,
-		codeWrap:      types.Bool(opts.CodeWrap, true),
-		highlighter:   opts.Highlighter,
+		wrap:             doWrap,
+		width:            width,
+		color:            color,
+		hyperlinks:       useHyperlinks,
+		theme:            th,
+		listIndent:       types.Int(opts.ListIndent, 2),
+		quotePrefix:      types.String(opts.QuotePrefix, "> "),
+		tableBorder:      tableBorder,
+		tablePadding:     types.Int(opts.TablePadding, 1),
+		tableDense:       opts.TableDense,
+		tableTruncate:    types.Bool(opts.TableTruncate, true),
+		tableEllipsis:    types.String(opts.TableEllipsis, "…"),
+		codeBox:          types.Bool(opts.CodeBox, true),
+		codeGutter:       opts.CodeGutter,
+		codeWrap:         types.Bool(opts.CodeWrap, true),
+		squashParagraphs: opts.SquashParagraphs,
+		highlighter:      opts.Highlighter,
 	}
 }
 
@@ -184,6 +186,13 @@ func renderBlocks(blocks []*Block, ctx *renderContext) string {
 			}
 		}
 		sb.WriteString(renderBlock(b, ctx))
+		// Add a blank line between consecutive paragraphs unless squashing.
+		if !ctx.opts.squashParagraphs &&
+			b.Kind == ast.KindParagraph &&
+			i+1 < len(blocks) &&
+			blocks[i+1].Kind == ast.KindParagraph {
+			sb.WriteByte('\n')
+		}
 	}
 	return sb.String()
 }

@@ -84,7 +84,7 @@ type RenderOptions struct {
 
 	// ListIndent is spaces per nesting level for lists. Default 2.
 	ListIndent *int
-	// QuotePrefix is the prefix prepended to every blockquote line. Default "│ ".
+	// QuotePrefix is the prefix prepended to every blockquote line. Default "> ".
 	QuotePrefix *string
 
 	// TableBorder controls table border style. Default TableBorderUnicode.
@@ -104,6 +104,9 @@ type RenderOptions struct {
 	CodeGutter bool
 	// CodeWrap wraps long code lines to the render width. Default true.
 	CodeWrap *bool
+
+	// SquashParagraphs removes the blank line between consecutive paragraphs. Default false.
+	SquashParagraphs bool
 
 	// Highlighter is an optional syntax-highlighting hook for code blocks.
 	Highlighter Highlighter
