@@ -5,7 +5,6 @@
 package theme
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/funcan/showmd/internal/types"
@@ -250,7 +249,7 @@ func (s *Styler) resolveColor(name string) termenv.Color {
 		return s.profile.Color(name)
 	}
 	// Unknown: return a no-op color.
-	return s.profile.Color(fmt.Sprintf("%s", name))
+	return s.profile.Color(name)
 }
 
 func isDigits(s string) bool {
