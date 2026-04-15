@@ -98,6 +98,14 @@ type renderContext struct {
 	src    []byte
 }
 
+// effectiveWidth returns the configured terminal width, defaulting to 80.
+func (ctx *renderContext) effectiveWidth() int {
+	if ctx.opts.width == 0 {
+		return 80
+	}
+	return ctx.opts.width
+}
+
 // Render renders markdown to an ANSI string.
 func Render(markdown string, opts types.RenderOptions) string {
 	resolved := resolveOptions(opts)

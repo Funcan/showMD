@@ -151,10 +151,7 @@ func renderParagraphText(raw string, ctx *renderContext, indentLevel int) string
 		normalized = append(normalized, line)
 	}
 
-	width := ctx.opts.width
-	if width == 0 {
-		width = 80
-	}
+	width := ctx.effectiveWidth()
 
 	var sb strings.Builder
 	for _, l := range normalized {
@@ -171,10 +168,7 @@ func renderBlockquote(n ast.Node, ctx *renderContext, indentLevel int) string {
 	inner := renderASTChildren(n, ctx, indentLevel, false)
 	prefix := ctx.styler.Apply(ctx.opts.quotePrefix, ctx.opts.theme.Quote)
 	text := strings.TrimRight(inner, "\n")
-	width := ctx.opts.width
-	if width == 0 {
-		width = 80
-	}
+	width := ctx.effectiveWidth()
 	wrapped := wrap.WrapWithPrefix(text, width, ctx.opts.wrap, prefix)
 	var sb strings.Builder
 	for _, l := range wrapped {
