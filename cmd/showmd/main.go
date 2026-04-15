@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -249,11 +250,7 @@ func run(a *cliArgs, r io.Reader, w io.Writer, stderr io.Writer) int {
 }
 
 func isEPIPE(err error) bool {
-	if err == nil {
-		return false
-	}
-	s := err.Error()
-	return strings.Contains(s, "broken pipe") || strings.Contains(s, "EPIPE")
+	return err != nil && errors.Is(err, syscall.EPIPE)
 }
 
 func main() {
