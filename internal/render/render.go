@@ -188,12 +188,12 @@ func renderBlocks(blocks []*Block, ctx *renderContext) string {
 				if isCode(next) && next.Lang == "" {
 					next.Lang = m[1]
 					i++
-					sb.WriteString(renderBlock(next, ctx))
+					sb.WriteString(renderBlock(next, ctx, 0))
 					continue
 				}
 			}
 		}
-		sb.WriteString(renderBlock(b, ctx))
+		sb.WriteString(renderBlock(b, ctx, 0))
 		// Add a blank line between consecutive paragraphs unless squashing.
 		if !ctx.opts.squashParagraphs &&
 			b.Kind == ast.KindParagraph &&

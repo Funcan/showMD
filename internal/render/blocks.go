@@ -10,22 +10,22 @@ import (
 	east "github.com/yuin/goldmark/extension/ast"
 )
 
-// renderBlock dispatches a top-level normalized Block to its renderer.
-func renderBlock(b *Block, ctx *renderContext) string {
+// renderBlock dispatches a normalized Block to its renderer.
+func renderBlock(b *Block, ctx *renderContext, indentLevel int) string {
 	switch {
 	case b.Kind == ast.KindParagraph || b.Kind == ast.KindTextBlock:
 		if b.Content != "" {
-			return renderParagraphText(b.Content, ctx, 0)
+			return renderParagraphText(b.Content, ctx, indentLevel)
 		}
-		return renderParagraph(b.Node, ctx, 0)
+		return renderParagraph(b.Node, ctx, indentLevel)
 	case b.Kind == ast.KindHeading:
 		return renderHeading(b.Node, ctx)
 	case b.Kind == ast.KindThematicBreak:
 		return renderHr(ctx)
 	case b.Kind == ast.KindBlockquote:
-		return renderBlockquote(b.Node, ctx, 0)
+		return renderBlockquote(b.Node, ctx, indentLevel)
 	case b.Kind == ast.KindList:
-		return renderList(b.Node, ctx, 0)
+		return renderList(b.Node, ctx, indentLevel)
 	case isCode(b):
 		return renderCodeBlock(b, ctx)
 	case b.Kind == east.KindTable:
@@ -40,32 +40,15 @@ func renderBlock(b *Block, ctx *renderContext) string {
 // renderASTNode renders a single goldmark AST node as a block.
 // Used for nested content (inside blockquotes, list items, etc.).
 func renderASTNode(n ast.Node, ctx *renderContext, indentLevel int, tight bool) string {
-	switch n.Kind() {
-	case ast.KindParagraph, ast.KindTextBlock:
-		return renderParagraph(n, ctx, indentLevel)
-	case ast.KindHeading:
-		return renderHeading(n, ctx)
-	case ast.KindThematicBreak:
-		return renderHr(ctx)
-	case ast.KindBlockquote:
-		return renderBlockquote(n, ctx, indentLevel)
-	case ast.KindList:
-		return renderList(n, ctx, indentLevel)
-	case ast.KindFencedCodeBlock, ast.KindCodeBlock:
-		lang := CodeBlockLang(n, ctx.src)
-		content := CodeBlockContent(n, ctx.src)
-		if lang == "" && looksLikeDiff(content) {
-			lang = "diff"
+	b := &Block{Node: n, Kind: n.Kind()}
+	if n.Kind() == ast.KindFencedCodeBlock || n.Kind() == ast.KindCodeBlock {
+		b.Lang = CodeBlockLang(n, ctx.src)
+		b.Content = CodeBlockContent(n, ctx.src)
+		if b.Lang == "" && looksLikeDiff(b.Content) {
+			b.Lang = "diff"
 		}
-		synth := &Block{Node: n, Kind: n.Kind(), Lang: lang, Content: content}
-		return renderCodeBlock(synth, ctx)
-	case east.KindTable:
-		return renderTable(n, ctx)
-	case ast.KindHTMLBlock:
-		return ""
-	default:
-		return ""
 	}
+	return renderBlock(b, ctx, indentLevel)
 }
 
 // renderASTChildren renders all block children of n, applying the [lang] label
