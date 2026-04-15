@@ -13,6 +13,13 @@ import (
 	"github.com/funcan/showmd/internal/types"
 )
 
+// Set by goreleaser via -ldflags.
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 const helpText = `showmd – render Markdown to ANSI in your terminal
 
 Usage: showmd [options] [file]
@@ -38,14 +45,16 @@ Options:
   --code-box=BOOL       Draw box around code blocks (default: true)
   --code-gutter=BOOL    Show line numbers in code blocks (default: false)
   --help, -h            Show this help
+  --version             Print version and exit
 `
 
 // cliArgs holds parsed CLI arguments.
 type cliArgs struct {
-	in   string // input file path ("" or "-" = stdin)
-	out  string // output file path ("" = stdout)
-	help bool
-	opts types.RenderOptions
+	in      string // input file path ("" or "-" = stdin)
+	out     string // output file path ("" = stdout)
+	help    bool
+	version bool
+	opts    types.RenderOptions
 }
 
 // parseArgs parses os.Args-style argument slice (starting from index 1).
@@ -82,6 +91,9 @@ func parseArgs(argv []string) (*cliArgs, error) {
 		switch {
 		case arg == "--help" || arg == "-h":
 			a.help = true
+
+		case arg == "--version":
+			a.version = true
 
 		case arg == "--no-wrap":
 			boolFlag(&a.opts.Wrap, false)
@@ -187,6 +199,10 @@ func parseArgs(argv []string) (*cliArgs, error) {
 func run(a *cliArgs, r io.Reader, w io.Writer, stderr io.Writer) int {
 	if a.help {
 		fmt.Fprint(w, helpText)
+		return 0
+	}
+	if a.version {
+		fmt.Fprintf(w, "showmd %s (%s) built %s\n", version, commit, date)
 		return 0
 	}
 
