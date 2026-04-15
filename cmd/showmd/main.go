@@ -1,3 +1,5 @@
 package main
 
-func main() {}
+func main() {
+	// Phase 9: CLI implementation pending.
+}
