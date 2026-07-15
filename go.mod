@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/mattn/go-runewidth v0.0.23
 	github.com/muesli/termenv v0.16.0
-	github.com/yuin/goldmark v1.8.2
+	github.com/yuin/goldmark v1.8.4
 	golang.org/x/term v0.42.0
 )
 
