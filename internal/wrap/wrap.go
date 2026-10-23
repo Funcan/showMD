@@ -35,11 +35,13 @@ func VisibleWidth(s string) int {
 
 // orphanWords is the set of words that should not be left dangling at the end
 // of a line. Matches the TS orphanPhraseTail regex.
+// Words must be preceded by whitespace (or start the string), not just a word
+// boundary, so that e.g. the "in" in "--in" isn't treated as an orphan.
 var (
 	// preposition+article pair that should move together.
-	reOrphanPhrase = regexp.MustCompile(`(?i)\b(with|in|on|of|to|for)\s+(a|an|the)$`)
+	reOrphanPhrase = regexp.MustCompile(`(?i)(?:^|\s)((?:with|in|on|of|to|for)\s+(?:a|an|the))$`)
 	// single orphan word.
-	reOrphanSingle = regexp.MustCompile(`(?i)\b(a|an|the|to|of|with|and|or|in|on|for)$`)
+	reOrphanSingle = regexp.MustCompile(`(?i)(?:^|\s)(a|an|the|to|of|with|and|or|in|on|for)$`)
 )
 
 // trimTrailingSpace removes trailing whitespace from s (equivalent to the TS
@@ -54,11 +56,11 @@ func trimTrailingSpace(s string) string {
 // It only matches whole words not followed by punctuation.
 func orphanPhraseTail(s string) string {
 	trimmed := trimTrailingSpace(s)
-	if m := reOrphanPhrase.FindString(trimmed); m != "" {
-		return m
+	if m := reOrphanPhrase.FindStringSubmatch(trimmed); m != nil {
+		return m[1]
 	}
-	if m := reOrphanSingle.FindString(trimmed); m != "" {
-		return m
+	if m := reOrphanSingle.FindStringSubmatch(trimmed); m != nil {
+		return m[1]
 	}
 	return ""
 }

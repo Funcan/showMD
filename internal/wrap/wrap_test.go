@@ -128,6 +128,15 @@ func TestWrapText_PunctuatedOrphan_NotMoved(t *testing.T) {
 	}
 }
 
+func TestWrapText_OrphanWordInsideToken_NotSplit(t *testing.T) {
+	// The "in" in "--in" is part of a larger token, not a standalone orphan.
+	got := wrap.WrapText("file / --in FILE", 14, true)
+	want := []string{"file / --in", "FILE"}
+	if !equalSlices(got, want) {
+		t.Errorf("WrapText orphan inside token:\nwant %v\n got %v", want, got)
+	}
+}
+
 func TestWrapText_NoTrailingSpaceOnLines(t *testing.T) {
 	got := wrap.WrapText("one two three", 7, true)
 	for _, line := range got {
