@@ -1,14 +1,15 @@
 // Package theme defines the built-in named themes and the Styler type, which
-// applies a StyleIntent to a string using ANSI escape codes via termenv.
+// applies a StyleIntent to a string using lipgloss.
 //
 // This is a direct port of src/theme.ts from Markdansi.
 package theme
 
 import (
+	"image/color"
 	"strings"
 
+	"charm.land/lipgloss/v2"
 	"github.com/funcan/showmd/internal/types"
-	"github.com/muesli/termenv"
 )
 
 // Built-in themes, matching the named themes in src/theme.ts.
@@ -171,100 +172,73 @@ func Merge(base, override types.Theme) types.Theme {
 	return result
 }
 
-// Styler applies a StyleIntent to a string, emitting ANSI escape codes when
-// color output is enabled. When color is false it is a no-op.
+// Styler applies a StyleIntent to a string using lipgloss. It always emits
+// full-fidelity (truecolor) escape sequences; the renderer downsamples the
+// final output to the terminal's colour profile. When disabled it is a no-op.
 type Styler struct {
-	color   bool
-	profile termenv.Profile
+	enabled bool
 }
 
-// NewStyler creates a Styler for the given colour profile. Colours that the
-// profile can't represent are approximated; ColorNone disables all ANSI output.
-func NewStyler(color types.ColorProfile) *Styler {
-	var profile termenv.Profile
-	switch color {
-	case types.Color16:
-		profile = termenv.ANSI
-	case types.Color256:
-		profile = termenv.ANSI256
-	case types.ColorTrue:
-		profile = termenv.TrueColor
-	default:
-		profile = termenv.Ascii
-	}
-	return &Styler{color: color != types.ColorNone, profile: profile}
+// NewStyler creates a Styler. Pass enabled=false to disable all escape output.
+func NewStyler(enabled bool) *Styler {
+	return &Styler{enabled: enabled}
 }
 
 // Apply styles text according to the given StyleIntent and returns the result.
 func (s *Styler) Apply(text string, intent types.StyleIntent) string {
-	if !s.color {
+	if !s.enabled {
 		return text
 	}
+	return style(intent).Render(text)
+}
 
-	style := s.profile.String(text)
+// Link styles text and makes it an OSC-8 hyperlink to url.
+func (s *Styler) Link(text, url string, intent types.StyleIntent) string {
+	if !s.enabled {
+		return text
+	}
+	return style(intent).Hyperlink(url).Render(text)
+}
 
+func style(intent types.StyleIntent) lipgloss.Style {
+	st := lipgloss.NewStyle().
+		TabWidth(lipgloss.NoTabConversion).
+		Bold(intent.Bold).
+		Italic(intent.Italic).
+		Underline(intent.Underline).
+		Faint(intent.Dim).
+		Strikethrough(intent.Strike)
 	if intent.Color != "" {
-		style = style.Foreground(s.resolveColor(intent.Color))
+		st = st.Foreground(resolveColor(intent.Color))
 	}
 	if intent.BgColor != "" {
-		style = style.Background(s.resolveColor(intent.BgColor))
+		st = st.Background(resolveColor(intent.BgColor))
 	}
-	if intent.Bold {
-		style = style.Bold()
-	}
-	if intent.Italic {
-		style = style.Italic()
-	}
-	if intent.Underline {
-		style = style.Underline()
-	}
-	if intent.Dim {
-		style = style.Faint()
-	}
-	if intent.Strike {
-		style = style.CrossOut()
-	}
-
-	return style.String()
+	return st
 }
 
-// resolveColor maps a color name, hex value, or ANSI index string to a
-// termenv.Color. Named colors map to ANSI 16-color values; hex strings (#rrggbb)
-// use TrueColor; bare integers use ANSI 256-color.
-func (s *Styler) resolveColor(name string) termenv.Color {
+// resolveColor maps a color name, hex value ("#rrggbb"), or ANSI 256 index to a
+// color. Named colors map to the basic 16 ANSI colors.
+func resolveColor(name string) color.Color {
 	switch strings.ToLower(name) {
 	case "black":
-		return s.profile.Color("0")
+		return lipgloss.Black
 	case "red":
-		return s.profile.Color("1")
+		return lipgloss.Red
 	case "green":
-		return s.profile.Color("2")
+		return lipgloss.Green
 	case "yellow":
-		return s.profile.Color("3")
+		return lipgloss.Yellow
 	case "blue":
-		return s.profile.Color("4")
+		return lipgloss.Blue
 	case "magenta":
-		return s.profile.Color("5")
+		return lipgloss.Magenta
 	case "cyan":
-		return s.profile.Color("6")
+		return lipgloss.Cyan
 	case "white":
-		return s.profile.Color("7")
+		return lipgloss.White
 	case "gray", "grey":
-		return s.profile.Color("8")
+		return lipgloss.BrightBlack
 	}
-	// Hex color (#rrggbb) or ANSI 256 index — pass directly to termenv.
-	if strings.HasPrefix(name, "#") || isDigits(name) {
-		return s.profile.Color(name)
-	}
-	// Unknown: return a no-op color.
-	return s.profile.Color(name)
-}
-
-func isDigits(s string) bool {
-	for _, r := range s {
-		if r < '0' || r > '9' {
-			return false
-		}
-	}
-	return len(s) > 0
+	return lipgloss.Color(name)
 }

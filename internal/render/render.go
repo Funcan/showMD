@@ -4,11 +4,12 @@ package render
 
 import (
 	"regexp"
+
+	"github.com/charmbracelet/colorprofile"
 	"strings"
 
 	"github.com/funcan/showmd/internal/theme"
 	"github.com/funcan/showmd/internal/types"
-	"github.com/funcan/showmd/internal/wrap"
 	"github.com/yuin/goldmark/ast"
 )
 
@@ -16,7 +17,7 @@ import (
 type resolvedOptions struct {
 	wrap             bool
 	width            int // 0 = no fixed width (only meaningful when wrap=false)
-	color            types.ColorProfile
+	color            colorprofile.Profile
 	hyperlinks       bool
 	theme            types.Theme
 	listIndent       int
@@ -52,7 +53,7 @@ func resolveOptions(term types.Terminal, opts types.RenderOptions) resolvedOptio
 		wrap:             doWrap,
 		width:            width,
 		color:            term.Color,
-		hyperlinks:       term.Hyperlinks && term.Color != types.ColorNone,
+		hyperlinks:       term.Hyperlinks && term.Color > colorprofile.NoTTY,
 		theme:            th,
 		listIndent:       types.Int(opts.ListIndent, 2),
 		quotePrefix:      types.String(opts.QuotePrefix, "> "),
@@ -88,14 +89,17 @@ func (ctx *renderContext) effectiveWidth() int {
 // given capabilities. It never inspects the real terminal or environment.
 func Render(markdown string, term types.Terminal, opts types.RenderOptions) string {
 	resolved := resolveOptions(term, opts)
-	styler := theme.NewStyler(resolved.color)
+	styler := theme.NewStyler(resolved.color > colorprofile.NoTTY)
 	doc := Parse(dedent(markdown))
 	ctx := &renderContext{opts: resolved, styler: styler, src: doc.Source}
 	output := renderBlocks(doc.Blocks, ctx)
-	if resolved.color == types.ColorNone {
-		output = wrap.StripANSI(output)
-	}
-	return output
+
+	// Downsample colours to the terminal's profile, or strip all escape
+	// sequences (including any from a Highlighter) for NoTTY/Unknown.
+	var sb strings.Builder
+	w := &colorprofile.Writer{Forward: &sb, Profile: resolved.color}
+	_, _ = w.WriteString(output)
+	return sb.String()
 }
 
 // dedent removes the minimum common leading whitespace from all non-empty lines.

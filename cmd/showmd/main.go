@@ -2,7 +2,9 @@ package main
 
 import (
 	"errors"
+
 	"fmt"
+	"github.com/charmbracelet/colorprofile"
 	"io"
 	"os"
 	"os/signal"
@@ -13,7 +15,6 @@ import (
 	"github.com/funcan/showmd/internal/hyperlink"
 	"github.com/funcan/showmd/internal/render"
 	"github.com/funcan/showmd/internal/types"
-	"github.com/muesli/termenv"
 	"golang.org/x/term"
 )
 
@@ -267,17 +268,12 @@ func detectTerminal(a *cliArgs) types.Terminal {
 			t.Width = w
 		}
 	}
-	if !a.noColor {
-		// EnvColorProfile returns Ascii when stdout isn't a TTY, and honours
-		// NO_COLOR / CLICOLOR_FORCE.
-		switch termenv.NewOutput(os.Stdout).EnvColorProfile() {
-		case termenv.TrueColor:
-			t.Color = types.ColorTrue
-		case termenv.ANSI256:
-			t.Color = types.Color256
-		case termenv.ANSI:
-			t.Color = types.Color16
-		}
+	if a.noColor {
+		t.Color = colorprofile.NoTTY
+	} else {
+		// Detect returns NoTTY when stdout isn't a TTY, and honours NO_COLOR
+		// and CLICOLOR_FORCE.
+		t.Color = colorprofile.Detect(os.Stdout, os.Environ())
 	}
 	t.Hyperlinks = !a.noLinks && hyperlink.Supported()
 	return t

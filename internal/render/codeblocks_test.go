@@ -1,6 +1,7 @@
 package render_test
 
 import (
+	"github.com/charmbracelet/colorprofile"
 	"strings"
 	"testing"
 
@@ -46,7 +47,7 @@ func TestCodeBlock_NoWrap_AllowsOverflow(t *testing.T) {
 
 func TestCodeBlock_GutterWithNoBox(t *testing.T) {
 	md := "```\nline1\nline2\n```"
-	out := render.Render(md, types.Terminal{Color: types.ColorTrue}, types.RenderOptions{
+	out := render.Render(md, types.Terminal{Color: colorprofile.TrueColor}, types.RenderOptions{
 		CodeBox:    boolFalse(),
 		CodeGutter: true,
 		Wrap:       boolFalse(),
@@ -63,7 +64,7 @@ func TestCodeBlock_GutterMultiDigit(t *testing.T) {
 		lines[i] = "l" + string(rune('0'+i+1))
 	}
 	md := "```\n" + strings.Join(lines, "\n") + "\n```"
-	out := render.Render(md, types.Terminal{Color: types.ColorTrue}, types.RenderOptions{
+	out := render.Render(md, types.Terminal{Color: colorprofile.TrueColor}, types.RenderOptions{
 		CodeGutter: true,
 		Wrap:       boolFalse(),
 	})
@@ -75,7 +76,7 @@ func TestCodeBlock_GutterMultiDigit(t *testing.T) {
 
 func TestCodeBlock_LangLabelInHeader(t *testing.T) {
 	md := "```bash\nthis line is definitely longer than the label\nand still flows\n```"
-	out := render.Render(md, types.Terminal{Color: types.ColorTrue}, types.RenderOptions{
+	out := render.Render(md, types.Terminal{Color: colorprofile.TrueColor}, types.RenderOptions{
 		Wrap: boolFalse(),
 	})
 	firstLine := wrap.StripANSI(strings.Split(out, "\n")[0])

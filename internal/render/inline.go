@@ -5,7 +5,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/funcan/showmd/internal/hyperlink"
 	"github.com/funcan/showmd/internal/types"
 	"github.com/yuin/goldmark/ast"
 	east "github.com/yuin/goldmark/extension/ast"
@@ -122,7 +121,7 @@ func renderLink(n *ast.Link, ctx *renderContext) string {
 		return label
 	}
 	if ctx.opts.hyperlinks {
-		return hyperlink.OSC8(url, label)
+		return ctx.styler.Link(label, url, ctx.opts.theme.Link)
 	}
 	if label != url {
 		return ctx.styler.Apply(label, ctx.opts.theme.Link) +
@@ -142,7 +141,7 @@ func renderAutoLink(n *ast.AutoLink, ctx *renderContext) string {
 		return label
 	}
 	if ctx.opts.hyperlinks && url != "" {
-		return hyperlink.OSC8(url, label)
+		return ctx.styler.Link(label, url, ctx.opts.theme.Link)
 	}
 	return ctx.styler.Apply(label, ctx.opts.theme.Link)
 }

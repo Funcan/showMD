@@ -2,6 +2,8 @@
 // It is a direct port of src/types.ts from Markdansi.
 package types
 
+import "github.com/charmbracelet/colorprofile"
+
 // ThemeName is the name of a built-in theme.
 type ThemeName string
 
@@ -61,21 +63,6 @@ type Theme struct {
 	TableCell   StyleIntent
 }
 
-// ColorProfile is the colour capability of the output terminal. The zero value
-// (ColorNone) disables all ANSI styling.
-type ColorProfile int
-
-const (
-	// ColorNone emits plain text: no ANSI styling and no OSC-8 hyperlinks.
-	ColorNone ColorProfile = iota
-	// Color16 uses the basic 16 ANSI colours; other colours are approximated.
-	Color16
-	// Color256 uses the xterm 256-colour palette; hex colours are approximated.
-	Color256
-	// ColorTrue uses 24-bit colour.
-	ColorTrue
-)
-
 // Terminal describes the capabilities of the output device. The renderer never
 // probes the real terminal; callers must fill this in. The zero value renders
 // plain text at 80 columns.
@@ -83,9 +70,12 @@ type Terminal struct {
 	// Width is the column count to wrap at. 0 means 80 when wrapping, or no
 	// fixed width when RenderOptions.Wrap is false.
 	Width int
-	// Color is the colour capability of the terminal.
-	Color ColorProfile
-	// Hyperlinks enables OSC-8 hyperlinks. Ignored when Color is ColorNone.
+	// Color is the colour capability of the terminal. colorprofile.NoTTY (or
+	// the zero value, Unknown) emits plain text with no escape sequences;
+	// colorprofile.ASCII allows bold/italic/etc. but no colours. Colours the
+	// profile can't represent are approximated.
+	Color colorprofile.Profile
+	// Hyperlinks enables OSC-8 hyperlinks. Ignored when Color is NoTTY or Unknown.
 	Hyperlinks bool
 }
 

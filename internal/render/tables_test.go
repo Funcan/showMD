@@ -1,6 +1,7 @@
 package render_test
 
 import (
+	"github.com/charmbracelet/colorprofile"
 	"strings"
 	"testing"
 
@@ -71,7 +72,7 @@ func TestTable_AutolinkEmailPlain(t *testing.T) {
 	opts := noColorTable(func(o *types.RenderOptions) {
 		o.TableTruncate = boolFalse()
 	})
-	out := render.Render(md, types.Terminal{Width: 40, Color: types.ColorTrue, Hyperlinks: true}, opts)
+	out := render.Render(md, types.Terminal{Width: 40, Color: colorprofile.TrueColor, Hyperlinks: true}, opts)
 	if !strings.Contains(out, "icon_16x16@2x.png") {
 		t.Errorf("expected filename in output, got %q", out)
 	}

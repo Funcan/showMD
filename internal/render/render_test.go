@@ -1,6 +1,7 @@
 package render_test
 
 import (
+	"github.com/charmbracelet/colorprofile"
 	"strings"
 	"testing"
 
@@ -363,11 +364,14 @@ func TestRender_Hyperlinks_URLSuffix_WhenOff(t *testing.T) {
 }
 
 func TestRender_Hyperlinks_OSC8_WhenEnabled(t *testing.T) {
-	out := render.Render("[x](https://example.com)", types.Terminal{Color: types.ColorTrue, Hyperlinks: true}, types.RenderOptions{
+	out := render.Render("[x](https://example.com)", types.Terminal{Color: colorprofile.TrueColor, Hyperlinks: true}, types.RenderOptions{
 		Wrap: boolFalse(),
 	})
-	if !strings.Contains(out, "\x1b]8;;https://example.com\x07x\x1b]8;;\x07") {
+	if !strings.HasPrefix(out, "\x1b]8;;https://example.com\x07") || !strings.Contains(out, "\x1b]8;;\x07") {
 		t.Errorf("expected OSC-8 hyperlink, got %q", out)
+	}
+	if !strings.Contains(out, "\x1b[4;34") {
+		t.Errorf("expected hyperlink text to carry the theme's link style, got %q", out)
 	}
 }
 
@@ -415,7 +419,7 @@ func TestRender_List_SoftBreakInsideItem(t *testing.T) {
 func TestRender_Theme_InlineVsBlockCodeDistinct(t *testing.T) {
 	inlineColor := "\x1b[31m" // red
 	blockColor := "\x1b[32m"  // green
-	out := render.Render("`inline`\n\n```\nblock\n```", types.Terminal{Color: types.ColorTrue}, types.RenderOptions{
+	out := render.Render("`inline`\n\n```\nblock\n```", types.Terminal{Color: colorprofile.TrueColor}, types.RenderOptions{
 		Wrap: boolFalse(),
 		Theme: &types.Theme{
 			InlineCode: types.StyleIntent{Color: "red"},
@@ -431,7 +435,7 @@ func TestRender_Theme_InlineVsBlockCodeDistinct(t *testing.T) {
 }
 
 func TestRender_Theme_CodeFallback(t *testing.T) {
-	out := render.Render("`x`\n\n```\ny\n```", types.Terminal{Color: types.ColorTrue}, types.RenderOptions{
+	out := render.Render("`x`\n\n```\ny\n```", types.Terminal{Color: colorprofile.TrueColor}, types.RenderOptions{
 		Wrap:  boolFalse(),
 		Theme: &types.Theme{Code: types.StyleIntent{Color: "red"}},
 	})
@@ -441,7 +445,7 @@ func TestRender_Theme_CodeFallback(t *testing.T) {
 }
 
 func TestRender_DefaultTheme_Colors(t *testing.T) {
-	out := render.Render("`inline`\n\n```\nblock\n```\n\n# H", types.Terminal{Color: types.ColorTrue}, types.RenderOptions{
+	out := render.Render("`inline`\n\n```\nblock\n```\n\n# H", types.Terminal{Color: colorprofile.TrueColor}, types.RenderOptions{
 		Wrap:    boolFalse(),
 		CodeBox: boolFalse(),
 	})
@@ -454,7 +458,7 @@ func TestRender_DefaultTheme_Colors(t *testing.T) {
 }
 
 func TestRender_HighlighterHook(t *testing.T) {
-	out := render.Render("```\ncode\n```", types.Terminal{Color: types.ColorTrue}, types.RenderOptions{
+	out := render.Render("```\ncode\n```", types.Terminal{Color: colorprofile.TrueColor}, types.RenderOptions{
 		Wrap:        boolFalse(),
 		Highlighter: func(code, _ string) string { return strings.ToUpper(code) },
 	})
@@ -514,3 +518,37 @@ func TestRender_BlockquoteCustomPrefix(t *testing.T) {
 
 func boolTrue() *bool  { t := true; return &t }
 func boolFalse() *bool { f := false; return &f }
+
+// --- Colour profiles ---
+
+func TestRender_ColorProfileDownsampling(t *testing.T) {
+	// The solarized theme renders code blocks in #2aa198.
+	cases := []struct {
+		profile colorprofile.Profile
+		want    string
+		notWant string
+	}{
+		{colorprofile.TrueColor, "38;2;42;161;152", ""},
+		{colorprofile.ANSI256, "38;5;", "38;2;"},
+		{colorprofile.ANSI, "\x1b[32m", "38;"},
+		{colorprofile.ASCII, "", "\x1b[3"},
+	}
+	for _, c := range cases {
+		out := render.Render("```\nx\n```", types.Terminal{Color: c.profile}, types.RenderOptions{
+			ThemeName: types.ThemeSolarized,
+		})
+		if !strings.Contains(out, c.want) {
+			t.Errorf("%v: expected %q in %q", c.profile, c.want, out)
+		}
+		if c.notWant != "" && strings.Contains(out, c.notWant) {
+			t.Errorf("%v: did not expect %q in %q", c.profile, c.notWant, out)
+		}
+	}
+}
+
+func TestRender_ASCIIProfileKeepsAttributes(t *testing.T) {
+	out := render.Render("**bold**", types.Terminal{Color: colorprofile.ASCII}, types.RenderOptions{})
+	if !strings.Contains(out, "\x1b[1m") {
+		t.Errorf("expected bold to survive the ASCII profile, got %q", out)
+	}
+}

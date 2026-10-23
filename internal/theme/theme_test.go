@@ -126,7 +126,7 @@ func TestMerge_OverrideFields(t *testing.T) {
 // --- Styler ---
 
 func TestStyler_NoColor_IsNoop(t *testing.T) {
-	s := theme.NewStyler(types.ColorNone)
+	s := theme.NewStyler(false)
 	result := s.Apply("hello", types.StyleIntent{Color: "red", Bold: true})
 	if result != "hello" {
 		t.Errorf("no-color styler should return text unchanged, got %q", result)
@@ -134,7 +134,7 @@ func TestStyler_NoColor_IsNoop(t *testing.T) {
 }
 
 func TestStyler_Color_ContainsEscapes(t *testing.T) {
-	s := theme.NewStyler(types.ColorTrue)
+	s := theme.NewStyler(true)
 	result := s.Apply("hello", types.StyleIntent{Color: "red"})
 	if !strings.Contains(result, "hello") {
 		t.Error("styled output should contain original text")
@@ -145,7 +145,7 @@ func TestStyler_Color_ContainsEscapes(t *testing.T) {
 }
 
 func TestStyler_Bold(t *testing.T) {
-	s := theme.NewStyler(types.ColorTrue)
+	s := theme.NewStyler(true)
 	result := s.Apply("x", types.StyleIntent{Bold: true})
 	if !strings.Contains(result, "\x1b[") {
 		t.Errorf("bold styler should emit ANSI escapes, got %q", result)
@@ -153,7 +153,7 @@ func TestStyler_Bold(t *testing.T) {
 }
 
 func TestStyler_HexColor(t *testing.T) {
-	s := theme.NewStyler(types.ColorTrue)
+	s := theme.NewStyler(true)
 	// Should not panic and should produce output containing the text.
 	result := s.Apply("x", types.StyleIntent{Color: "#2aa198"})
 	if !strings.Contains(result, "x") {
@@ -161,25 +161,8 @@ func TestStyler_HexColor(t *testing.T) {
 	}
 }
 
-func TestStyler_HexColor_DownsampledToProfile(t *testing.T) {
-	cases := []struct {
-		profile types.ColorProfile
-		want    string
-	}{
-		{types.ColorTrue, "\x1b[38;2;"},
-		{types.Color256, "\x1b[38;5;"},
-		{types.Color16, "\x1b[32m"},
-	}
-	for _, c := range cases {
-		got := theme.NewStyler(c.profile).Apply("x", types.StyleIntent{Color: "#2aa198"})
-		if !strings.HasPrefix(got, c.want) {
-			t.Errorf("profile %d: expected prefix %q, got %q", c.profile, c.want, got)
-		}
-	}
-}
-
 func TestStyler_EmptyIntent_NoChange(t *testing.T) {
-	s := theme.NewStyler(types.ColorTrue)
+	s := theme.NewStyler(true)
 	result := s.Apply("plain", types.StyleIntent{})
 	if !strings.Contains(result, "plain") {
 		t.Errorf("empty intent should still contain text, got %q", result)

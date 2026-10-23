@@ -1,6 +1,5 @@
-// Package hyperlink provides OSC-8 hyperlink construction and terminal
-// detection. It is a direct port of src/hyperlink.ts from Markdansi, with the
-// detection logic ported from the supports-hyperlinks@4.4.0 npm package.
+// Package hyperlink detects whether the terminal supports OSC-8 hyperlinks.
+// The detection logic is ported from the supports-hyperlinks@4.4.0 npm package.
 package hyperlink
 
 import (
@@ -10,15 +9,6 @@ import (
 
 	"golang.org/x/term"
 )
-
-// OSC8 wraps text in an OSC-8 hyperlink sequence. The result looks like:
-//
-//	ESC ] 8 ;; url BEL text ESC ] 8 ;; BEL
-//
-// Terminals that support OSC-8 render text as a clickable link to url.
-func OSC8(url, text string) string {
-	return "\x1b]8;;" + url + "\x07" + text + "\x1b]8;;\x07"
-}
 
 // Supported returns true when the current terminal is known to support OSC-8
 // hyperlinks. It checks environment variables using the same heuristics as the

@@ -96,20 +96,24 @@ showmd --no-color README.md --out plain.txt
 ## Library API
 
 ```go
-import "github.com/funcan/showmd"
+import (
+	"github.com/charmbracelet/colorprofile"
+	"github.com/funcan/showmd"
+)
 
 out := showmd.Render(markdown, showmd.Terminal{
-	Width:      100,              // 0 = 80 (or unlimited with Wrap disabled)
-	Color:      showmd.ColorTrue, // ColorNone (plain text), Color16, Color256, ColorTrue
-	Hyperlinks: true,             // OSC-8 links; ignored with ColorNone
+	Width:      100,                    // 0 = 80 (or unlimited with Wrap disabled)
+	Color:      colorprofile.TrueColor, // or NoTTY (plain), ASCII, ANSI, ANSI256
+	Hyperlinks: true,                   // OSC-8 links; ignored with NoTTY
 }, showmd.Options{
 	ThemeName: showmd.ThemeSolarized,
 })
 ```
 
 The library never probes the terminal or environment; the caller describes
-the output device with `Terminal`. The zero `Terminal` renders plain text at 80
-columns. Colours the profile can't represent are approximated.
+the output device with `Terminal`. To detect it, use e.g.
+`colorprofile.Detect(os.Stdout, os.Environ())`. The zero `Terminal` renders
+plain text at 80 columns. Colours the profile can't represent are approximated.
 
 ---
 

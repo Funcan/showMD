@@ -1,7 +1,6 @@
 package hyperlink_test
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/funcan/showmd/internal/hyperlink"
@@ -14,38 +13,6 @@ func env(pairs ...string) func(string) string {
 		m[pairs[i]] = pairs[i+1]
 	}
 	return func(k string) string { return m[k] }
-}
-
-// --- OSC8 ---
-
-func TestOSC8_Structure(t *testing.T) {
-	result := hyperlink.OSC8("https://example.com", "click here")
-	if !strings.HasPrefix(result, "\x1b]8;;https://example.com\x07") {
-		t.Errorf("OSC8: bad opening sequence in %q", result)
-	}
-	if !strings.Contains(result, "click here") {
-		t.Errorf("OSC8: text missing from %q", result)
-	}
-	if !strings.HasSuffix(result, "\x1b]8;;\x07") {
-		t.Errorf("OSC8: bad closing sequence in %q", result)
-	}
-}
-
-func TestOSC8_EmptyURL(t *testing.T) {
-	result := hyperlink.OSC8("", "text")
-	if !strings.Contains(result, "text") {
-		t.Errorf("OSC8 empty url: text missing from %q", result)
-	}
-}
-
-func TestOSC8_MatchesMarkdansiEscapes(t *testing.T) {
-	url := "https://example.com"
-	text := "link"
-	got := hyperlink.OSC8(url, text)
-	want := "\x1b]8;;" + url + "\x07" + text + "\x1b]8;;\x07"
-	if got != want {
-		t.Errorf("OSC8 exact bytes:\nwant %q\n got %q", want, got)
-	}
 }
 
 // --- SupportedWith ---
