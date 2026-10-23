@@ -113,7 +113,7 @@ func renderParagraph(n ast.Node, ctx *renderContext, indentLevel int) string {
 func renderParagraphText(raw string, ctx *renderContext, indentLevel int) string {
 	text := normalizeParagraphInlineText(raw)
 	prefix := strings.Repeat(" ", ctx.opts.listIndent*indentLevel)
-	rawLines := strings.Split(text, "\n")
+	rawLines := wrap.CarryStyles(strings.Split(text, "\n"))
 
 	// Group definition-like lines together (mirrors TS renderParagraph logic).
 	var normalized []string

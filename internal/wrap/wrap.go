@@ -121,7 +121,53 @@ func WrapText(text string, width int, wrap bool) []string {
 	if len(lines) == 0 {
 		lines = append(lines, "")
 	}
-	return lines
+	return CarryStyles(lines)
+}
+
+var (
+	reSGR   = regexp.MustCompile(`\x1b\[([0-9;:]*)m`)
+	reOSC8  = regexp.MustCompile(`\x1b\]8;[^;\x07\x1b]*;([^\x07\x1b]*)(?:\x07|\x1b\\)`)
+	reStyle = regexp.MustCompile(reSGR.String() + `|` + reOSC8.String())
+)
+
+const (
+	sgrReset  = "\x1b[m"
+	osc8Close = "\x1b]8;;\x1b\\"
+)
+
+// CarryStyles makes each line self-contained: any SGR attributes or OSC-8
+// hyperlink still open at the end of a line are closed there and reopened at
+// the start of the next line. Without this, anything prepended to the next
+// line (quote prefixes, table borders, box edges) inherits the open style.
+func CarryStyles(lines []string) []string {
+	var sgr []string // SGR sequences applied since the last reset
+	link := ""       // open OSC-8 sequence, or "" if none
+	out := make([]string, len(lines))
+	for i, line := range lines {
+		reopen := strings.Join(sgr, "") + link
+		for _, m := range reStyle.FindAllStringSubmatch(line, -1) {
+			switch {
+			case strings.HasPrefix(m[0], "\x1b]"):
+				if m[2] == "" {
+					link = ""
+				} else {
+					link = m[0]
+				}
+			case m[1] == "" || m[1] == "0":
+				sgr = nil
+			default:
+				sgr = append(sgr, m[0])
+			}
+		}
+		if link != "" {
+			line += osc8Close
+		}
+		if len(sgr) > 0 {
+			line += sgrReset
+		}
+		out[i] = reopen + line
+	}
+	return out
 }
 
 // splitKeepSep splits text on whitespace runs, keeping the separators as
@@ -156,9 +202,10 @@ func splitKeepSep(text string) []string {
 // to each. The effective wrapping width is reduced by the visible width of
 // prefix.
 func WrapWithPrefix(text string, width int, wrap bool, prefix string) []string {
+	lines := CarryStyles(strings.Split(text, "\n"))
 	if !wrap {
 		var out []string
-		for _, line := range strings.Split(text, "\n") {
+		for _, line := range lines {
 			out = append(out, prefix+line)
 		}
 		return out
@@ -168,7 +215,7 @@ func WrapWithPrefix(text string, width int, wrap bool, prefix string) []string {
 		effectiveWidth = 1
 	}
 	var out []string
-	for _, line := range strings.Split(text, "\n") {
+	for _, line := range lines {
 		for _, part := range WrapText(line, effectiveWidth, wrap) {
 			out = append(out, prefix+part)
 		}

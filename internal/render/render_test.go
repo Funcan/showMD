@@ -552,3 +552,16 @@ func TestRender_ASCIIProfileKeepsAttributes(t *testing.T) {
 		t.Errorf("expected bold to survive the ASCII profile, got %q", out)
 	}
 }
+
+func TestRender_WrappedStyleDoesNotLeakIntoQuotePrefix(t *testing.T) {
+	out := render.Render("> x **bold text that wraps across lines**", types.Terminal{Width: 20, Color: colorprofile.TrueColor}, types.RenderOptions{})
+	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
+	if len(lines) < 2 {
+		t.Fatalf("expected wrapping, got %q", out)
+	}
+	for i, l := range lines[:len(lines)-1] {
+		if !strings.HasSuffix(l, "\x1b[m") {
+			t.Errorf("line %d leaves bold open into the next prefix: %q", i, l)
+		}
+	}
+}

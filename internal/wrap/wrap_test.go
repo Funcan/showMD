@@ -201,3 +201,42 @@ func equalSlices(a, b []string) bool {
 	}
 	return true
 }
+
+// --- CarryStyles ---
+
+func TestCarryStyles_ClosesAndReopensSGR(t *testing.T) {
+	got := wrap.CarryStyles([]string{"a \x1b[1mbold", "still\x1b[m b", "c"})
+	want := []string{"a \x1b[1mbold\x1b[m", "\x1b[1mstill\x1b[m b", "c"}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("line %d: want %q, got %q", i, want[i], got[i])
+		}
+	}
+}
+
+func TestCarryStyles_ClosesAndReopensHyperlink(t *testing.T) {
+	open := "\x1b]8;;https://x.com\x1b\\"
+	closeLink := "\x1b]8;;\x1b\\"
+	got := wrap.CarryStyles([]string{open + "link", "text" + closeLink + " after"})
+	want := []string{open + "link" + closeLink, open + "text" + closeLink + " after"}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("line %d: want %q, got %q", i, want[i], got[i])
+		}
+	}
+}
+
+func TestWrapText_StyleDoesNotLeakAcrossLines(t *testing.T) {
+	lines := wrap.WrapText("x \x1b[1mbold text that wraps\x1b[m y", 10, true)
+	if len(lines) < 2 {
+		t.Fatalf("expected wrapping, got %q", lines)
+	}
+	for i, l := range lines[:len(lines)-1] {
+		if !strings.HasSuffix(l, "\x1b[m") {
+			t.Errorf("line %d leaves bold open: %q", i, l)
+		}
+	}
+	if !strings.HasPrefix(lines[1], "\x1b[1m") {
+		t.Errorf("line 1 should reopen bold: %q", lines[1])
+	}
+}
