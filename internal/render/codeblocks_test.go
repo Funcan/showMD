@@ -105,6 +105,24 @@ func TestCodeBlock_NoLabelWhenNoLang(t *testing.T) {
 	}
 }
 
+func TestCodeBlock_TabsExpandedSoBoxAligns(t *testing.T) {
+	md := "```\nfunc f() {\n\tx := 1\n\ta\tb\n}\n```"
+	out := render.Render(md, types.Terminal{}, types.RenderOptions{})
+	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
+	want := wrap.VisibleWidth(lines[0])
+	for _, l := range lines {
+		if strings.Contains(l, "\t") {
+			t.Errorf("expected tabs to be expanded, got %q", l)
+		}
+		if w := wrap.VisibleWidth(l); w != want {
+			t.Errorf("line width %d != box width %d: %q\n%s", w, want, l, out)
+		}
+	}
+	if !strings.Contains(out, "│         a       b ") {
+		t.Errorf("expected tab stops relative to code start, got:\n%s", out)
+	}
+}
+
 func TestCodeBlock_LongLangLabel_HeaderWidthAdapts(t *testing.T) {
 	md := "```superlonglanguageid\nfoo\nbar\n```"
 	out := render.Render(md, types.Terminal{}, types.RenderOptions{

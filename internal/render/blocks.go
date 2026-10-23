@@ -246,6 +246,30 @@ func isTaskItem(n ast.Node) (isTask bool, checked bool) {
 	return false, false
 }
 
+const codeTabWidth = 8
+
+// expandTabs replaces tabs with spaces up to the next tab stop. Raw tabs can't
+// be left in the output: their rendered width depends on the terminal's
+// absolute column, which breaks width measurement and box alignment.
+func expandTabs(line string) string {
+	if !strings.Contains(line, "\t") {
+		return line
+	}
+	var sb strings.Builder
+	col := 0
+	for _, r := range line {
+		if r == '\t' {
+			n := codeTabWidth - col%codeTabWidth
+			sb.WriteString(strings.Repeat(" ", n))
+			col += n
+			continue
+		}
+		sb.WriteRune(r)
+		col += wrap.VisibleWidth(string(r))
+	}
+	return sb.String()
+}
+
 // renderCodeBlock renders a fenced or indented code block.
 func renderCodeBlock(b *Block, ctx *renderContext) string {
 	codeStyle := ctx.opts.theme.BlockCode
@@ -282,6 +306,7 @@ func renderCodeBlock(b *Block, ctx *renderContext) string {
 
 	var contentLines []string
 	for lineIdx, line := range lines {
+		line = expandTabs(line)
 		var segments []string
 		if wrapLimit > 0 {
 			segments = wrapCodeLine(line, wrapLimit)
