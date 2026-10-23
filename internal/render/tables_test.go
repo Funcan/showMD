@@ -10,13 +10,8 @@ import (
 
 // noColorTable is a base option set for table tests.
 func noColorTable(extraOpts ...func(*types.RenderOptions)) types.RenderOptions {
-	f := false
-	w := 40
 	opts := types.RenderOptions{
-		Color:      &f,
-		Hyperlinks: &f,
-		Wrap:       boolTrue(),
-		Width:      &w,
+		Wrap: boolTrue(),
 	}
 	for _, fn := range extraOpts {
 		fn(&opts)
@@ -24,8 +19,8 @@ func noColorTable(extraOpts ...func(*types.RenderOptions)) types.RenderOptions {
 	return opts
 }
 
-func tableStrip(md string, opts types.RenderOptions) string {
-	return render.Strip(md, opts)
+func tableStrip(md string, width int, opts types.RenderOptions) string {
+	return render.Render(md, types.Terminal{Width: width}, opts)
 }
 
 func TestTable_DoesNotLinkifyUnderscores(t *testing.T) {
@@ -33,7 +28,7 @@ func TestTable_DoesNotLinkifyUnderscores(t *testing.T) {
 	opts := noColorTable(func(o *types.RenderOptions) {
 		o.TableTruncate = boolFalse()
 	})
-	out := tableStrip(md, opts)
+	out := tableStrip(md, 40, opts)
 	for _, line := range strings.Split(out, "\n") {
 		if !strings.Contains(line, "icon_16x16") {
 			continue
@@ -52,9 +47,8 @@ func TestTable_InlineLinkCells(t *testing.T) {
 	w := 60
 	opts := noColorTable(func(o *types.RenderOptions) {
 		o.TableTruncate = boolFalse()
-		o.Width = &w
 	})
-	out := tableStrip(md, opts)
+	out := tableStrip(md, w, opts)
 	if !strings.Contains(out, "icon_16x16.png") {
 		t.Errorf("expected filename in output, got %q", out)
 	}
@@ -67,9 +61,8 @@ func TestTable_AutolinkEmailPlain(t *testing.T) {
 	md := "| File | Size |\n| --- | --- |\n| icon_16x16@2x.png | 32 |\n"
 	opts := noColorTable(func(o *types.RenderOptions) {
 		o.TableTruncate = boolFalse()
-		o.Hyperlinks = boolTrue()
 	})
-	out := tableStrip(md, opts)
+	out := render.Render(md, types.Terminal{Width: 40, Color: types.ColorTrue, Hyperlinks: true}, opts)
 	if !strings.Contains(out, "icon_16x16@2x.png") {
 		t.Errorf("expected filename in output, got %q", out)
 	}
@@ -83,7 +76,7 @@ func TestTable_ASCIIBorder(t *testing.T) {
 	opts := noColorTable(func(o *types.RenderOptions) {
 		o.TableBorder = types.TableBorderASCII
 	})
-	out := tableStrip(md, opts)
+	out := tableStrip(md, 40, opts)
 	if !strings.Contains(out, "+") {
 		t.Errorf("expected '+' in ASCII border, got %q", out)
 	}
@@ -100,7 +93,7 @@ func TestTable_NoBorder_Dense(t *testing.T) {
 		o.TableDense = true
 		o.TablePadding = &p
 	})
-	out := tableStrip(md, opts)
+	out := tableStrip(md, 40, opts)
 	if strings.Contains(out, "┌") || strings.Contains(out, "+") {
 		t.Errorf("expected no border chars, got %q", out)
 	}
@@ -112,8 +105,8 @@ func TestTable_NoBorder_Dense(t *testing.T) {
 func TestTable_GFMBasic(t *testing.T) {
 	md := "| h1 | h2 |\n| --- | --- |\n| a | b |\n"
 	w := 30
-	opts := noColorTable(func(o *types.RenderOptions) { o.Width = &w })
-	out := tableStrip(md, opts)
+	opts := noColorTable()
+	out := tableStrip(md, w, opts)
 	if !strings.Contains(out, "h1") || !strings.Contains(out, "h2") {
 		t.Errorf("expected headers, got %q", out)
 	}
@@ -123,10 +116,9 @@ func TestTable_CellWrapping(t *testing.T) {
 	md := "| h1 | h2 |\n| --- | --- |\n| a b c d e f | g |\n"
 	w := 15
 	opts := noColorTable(func(o *types.RenderOptions) {
-		o.Width = &w
 		o.TableTruncate = boolFalse()
 	})
-	out := tableStrip(md, opts)
+	out := tableStrip(md, w, opts)
 	lines := strings.Split(strings.TrimSpace(out), "\n")
 	borderLines := 0
 	for _, l := range lines {
@@ -143,10 +135,9 @@ func TestTable_WrappedCells_SecondColPreserved(t *testing.T) {
 	md := "| h1 | h2 |\n| --- | --- |\n| a b c d e f | g |\n"
 	w := 15
 	opts := noColorTable(func(o *types.RenderOptions) {
-		o.Width = &w
 		o.TableTruncate = boolFalse()
 	})
-	out := tableStrip(md, opts)
+	out := tableStrip(md, w, opts)
 	found := false
 	for _, line := range strings.Split(out, "\n") {
 		if strings.Contains(line, "g") && strings.Contains(line, "a") {
@@ -162,8 +153,8 @@ func TestTable_WrappedCells_SecondColPreserved(t *testing.T) {
 func TestTable_NoTruncationWhenContentFits(t *testing.T) {
 	md := "| Provider | Enabled | Configured | Detail |\n| --- | --- | --- | --- |\n| WhatsApp | ON | WARN | not linked |\n"
 	w := 120
-	opts := noColorTable(func(o *types.RenderOptions) { o.Width = &w })
-	out := tableStrip(md, opts)
+	opts := noColorTable()
+	out := tableStrip(md, w, opts)
 	if !strings.Contains(out, "Provider") {
 		t.Errorf("expected header, got %q", out)
 	}
@@ -177,10 +168,9 @@ func TestTable_LongWordOverflows_NoBreak(t *testing.T) {
 	md := "| h1 | h2 |\n| --- | --- |\n| " + word + " | x |\n"
 	w := 10
 	opts := noColorTable(func(o *types.RenderOptions) {
-		o.Width = &w
 		o.TableTruncate = boolFalse()
 	})
-	out := tableStrip(md, opts)
+	out := tableStrip(md, w, opts)
 	if !strings.Contains(out, word) {
 		t.Errorf("long word should overflow without hard break, got %q", out)
 	}
@@ -190,10 +180,9 @@ func TestTable_AlignmentMarkers(t *testing.T) {
 	md := "| h1 | h2 |\n| :-- | --: |\n| left | right |\n"
 	w := 30
 	opts := noColorTable(func(o *types.RenderOptions) {
-		o.Width = &w
 		o.TableTruncate = boolFalse()
 	})
-	out := tableStrip(md, opts)
+	out := tableStrip(md, w, opts)
 	found := false
 	for _, line := range strings.Split(out, "\n") {
 		if strings.Contains(line, "left") && strings.Contains(line, "right") {
@@ -209,8 +198,8 @@ func TestTable_AlignmentMarkers(t *testing.T) {
 func TestTable_Truncation_DefaultOn(t *testing.T) {
 	md := "| col | col2 |\n| --- | --- |\n| Supercalifragilistic | short |\n"
 	w := 18
-	opts := noColorTable(func(o *types.RenderOptions) { o.Width = &w })
-	out := tableStrip(md, opts)
+	opts := noColorTable()
+	out := tableStrip(md, w, opts)
 	if !strings.Contains(out, "…") {
 		t.Errorf("expected truncation ellipsis at tight width, got %q", out)
 	}
@@ -221,10 +210,9 @@ func TestTable_ExtremelySmallWidth_HasEllipsis(t *testing.T) {
 	w := 4
 	p := 0
 	opts := noColorTable(func(o *types.RenderOptions) {
-		o.Width = &w
 		o.TablePadding = &p
 	})
-	out := tableStrip(md, opts)
+	out := tableStrip(md, w, opts)
 	if !strings.Contains(out, "…") {
 		t.Errorf("expected ellipsis at extreme width, got %q", out)
 	}
@@ -233,8 +221,8 @@ func TestTable_ExtremelySmallWidth_HasEllipsis(t *testing.T) {
 func TestTable_Alignment_LeftCenterRight(t *testing.T) {
 	md := "| l | c | r |\n| :-- | :-: | --: |\n| a | b | c |\n"
 	w := 40
-	opts := noColorTable(func(o *types.RenderOptions) { o.Width = &w })
-	out := tableStrip(md, opts)
+	opts := noColorTable()
+	out := tableStrip(md, w, opts)
 	var found string
 	for _, line := range strings.Split(out, "\n") {
 		if strings.Contains(line, "a") && strings.Contains(line, "c") {
@@ -256,7 +244,7 @@ func TestTable_CustomPadding(t *testing.T) {
 	opts := noColorTable(func(o *types.RenderOptions) {
 		o.TablePadding = &p
 	})
-	out := tableStrip(md, opts)
+	out := tableStrip(md, 40, opts)
 	if !strings.Contains(out, "h1") {
 		t.Errorf("expected table content with padding 2, got %q", out)
 	}

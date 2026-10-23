@@ -178,13 +178,21 @@ type Styler struct {
 	profile termenv.Profile
 }
 
-// NewStyler creates a Styler. Pass color=false to disable all ANSI output.
-func NewStyler(color bool) *Styler {
-	profile := termenv.TrueColor
-	if !color {
+// NewStyler creates a Styler for the given colour profile. Colours that the
+// profile can't represent are approximated; ColorNone disables all ANSI output.
+func NewStyler(color types.ColorProfile) *Styler {
+	var profile termenv.Profile
+	switch color {
+	case types.Color16:
+		profile = termenv.ANSI
+	case types.Color256:
+		profile = termenv.ANSI256
+	case types.ColorTrue:
+		profile = termenv.TrueColor
+	default:
 		profile = termenv.Ascii
 	}
-	return &Styler{color: color, profile: profile}
+	return &Styler{color: color != types.ColorNone, profile: profile}
 }
 
 // Apply styles text according to the given StyleIntent and returns the result.

@@ -10,8 +10,11 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/funcan/showmd/internal/hyperlink"
 	"github.com/funcan/showmd/internal/render"
 	"github.com/funcan/showmd/internal/types"
+	"github.com/muesli/termenv"
+	"golang.org/x/term"
 )
 
 // Set by goreleaser via -ldflags.
@@ -56,6 +59,10 @@ type cliArgs struct {
 	out     string // output file path ("" = stdout)
 	help    bool
 	version bool
+	width   int // 0 = detect from TTY
+	noColor bool
+	noLinks bool
+	term    types.Terminal // filled in by detectTerminal before run
 	opts    types.RenderOptions
 }
 
@@ -101,10 +108,10 @@ func parseArgs(argv []string) (*cliArgs, error) {
 			boolFlag(&a.opts.Wrap, false)
 
 		case arg == "--no-color":
-			boolFlag(&a.opts.Color, false)
+			a.noColor = true
 
 		case arg == "--no-links":
-			boolFlag(&a.opts.Hyperlinks, false)
+			a.noLinks = true
 
 		case arg == "--in":
 			if v, ok := next(); ok {
@@ -118,9 +125,11 @@ func parseArgs(argv []string) (*cliArgs, error) {
 
 		case arg == "--width":
 			if v, ok := next(); ok {
-				if err := intFlag(&a.opts.Width, v); err != nil {
-					return nil, fmt.Errorf("--width: %w", err)
+				n, err := strconv.Atoi(v)
+				if err != nil {
+					return nil, fmt.Errorf("--width: expected integer, got %q", v)
 				}
+				a.width = n
 			}
 
 		case arg == "--list-indent":
@@ -228,7 +237,7 @@ func run(a *cliArgs, r io.Reader, w io.Writer, stderr io.Writer) int {
 		}
 	}
 
-	output := render.Render(string(input), a.opts)
+	output := render.Render(string(input), a.term, a.opts)
 
 	// Write output.
 	if a.out != "" {
@@ -249,6 +258,31 @@ func run(a *cliArgs, r io.Reader, w io.Writer, stderr io.Writer) int {
 	return 0
 }
 
+// detectTerminal probes stdout and the environment for the terminal's
+// capabilities, honouring any CLI overrides.
+func detectTerminal(a *cliArgs) types.Terminal {
+	t := types.Terminal{Width: a.width}
+	if t.Width == 0 && types.Bool(a.opts.Wrap, true) {
+		if w, _, err := term.GetSize(int(os.Stdout.Fd())); err == nil && w > 0 {
+			t.Width = w
+		}
+	}
+	if !a.noColor {
+		// EnvColorProfile returns Ascii when stdout isn't a TTY, and honours
+		// NO_COLOR / CLICOLOR_FORCE.
+		switch termenv.NewOutput(os.Stdout).EnvColorProfile() {
+		case termenv.TrueColor:
+			t.Color = types.ColorTrue
+		case termenv.ANSI256:
+			t.Color = types.Color256
+		case termenv.ANSI:
+			t.Color = types.Color16
+		}
+	}
+	t.Hyperlinks = !a.noLinks && hyperlink.Supported()
+	return t
+}
+
 func isEPIPE(err error) bool {
 	return err != nil && errors.Is(err, syscall.EPIPE)
 }
@@ -264,5 +298,6 @@ func main() {
 		os.Exit(1)
 	}
 
+	a.term = detectTerminal(a)
 	os.Exit(run(a, os.Stdin, os.Stdout, os.Stderr))
 }

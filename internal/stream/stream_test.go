@@ -11,13 +11,9 @@ import (
 
 // renderNoColor mirrors the TS renderNoColor helper used in the stream tests.
 func renderNoColor(md string) string {
-	f := false
 	w := 60
-	return render.Render(md, types.RenderOptions{
-		Width:      &w,
-		Wrap:       boolPtr(true),
-		Color:      &f,
-		Hyperlinks: &f,
+	return render.Render(md, types.Terminal{Width: w}, types.RenderOptions{
+		Wrap: boolPtr(true),
 	})
 }
 

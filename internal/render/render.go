@@ -3,23 +3,20 @@
 package render
 
 import (
-	"os"
 	"regexp"
 	"strings"
 
-	"github.com/funcan/showmd/internal/hyperlink"
 	"github.com/funcan/showmd/internal/theme"
 	"github.com/funcan/showmd/internal/types"
 	"github.com/funcan/showmd/internal/wrap"
 	"github.com/yuin/goldmark/ast"
-	"golang.org/x/term"
 )
 
 // resolvedOptions holds all render options with defaults applied.
 type resolvedOptions struct {
 	wrap             bool
 	width            int // 0 = no fixed width (only meaningful when wrap=false)
-	color            bool
+	color            types.ColorProfile
 	hyperlinks       bool
 	theme            types.Theme
 	listIndent       int
@@ -36,31 +33,12 @@ type resolvedOptions struct {
 	highlighter      types.Highlighter
 }
 
-func resolveOptions(opts types.RenderOptions) resolvedOptions {
+func resolveOptions(term types.Terminal, opts types.RenderOptions) resolvedOptions {
 	doWrap := types.Bool(opts.Wrap, true)
-	isTTY := term.IsTerminal(int(os.Stdout.Fd()))
 
-	width := 0
-	if opts.Width != nil {
-		width = *opts.Width
-	} else if doWrap {
-		if w, _, err := term.GetSize(int(os.Stdout.Fd())); err == nil && w > 0 {
-			width = w
-		} else {
-			width = 80
-		}
-	}
-
-	color := types.Bool(opts.Color, isTTY)
-
-	var useHyperlinks bool
-	if opts.Hyperlinks != nil {
-		useHyperlinks = *opts.Hyperlinks
-	} else {
-		useHyperlinks = color && hyperlink.Supported()
-	}
-	if !color {
-		useHyperlinks = false
+	width := term.Width
+	if width == 0 && doWrap {
+		width = 80
 	}
 
 	th := theme.Resolve(opts)
@@ -73,8 +51,8 @@ func resolveOptions(opts types.RenderOptions) resolvedOptions {
 	return resolvedOptions{
 		wrap:             doWrap,
 		width:            width,
-		color:            color,
-		hyperlinks:       useHyperlinks,
+		color:            term.Color,
+		hyperlinks:       term.Hyperlinks && term.Color != types.ColorNone,
 		theme:            th,
 		listIndent:       types.Int(opts.ListIndent, 2),
 		quotePrefix:      types.String(opts.QuotePrefix, "> "),
@@ -106,32 +84,18 @@ func (ctx *renderContext) effectiveWidth() int {
 	return ctx.opts.width
 }
 
-// Render renders markdown to an ANSI string.
-func Render(markdown string, opts types.RenderOptions) string {
-	resolved := resolveOptions(opts)
+// Render renders markdown to a string for display on a terminal with the
+// given capabilities. It never inspects the real terminal or environment.
+func Render(markdown string, term types.Terminal, opts types.RenderOptions) string {
+	resolved := resolveOptions(term, opts)
 	styler := theme.NewStyler(resolved.color)
 	doc := Parse(dedent(markdown))
 	ctx := &renderContext{opts: resolved, styler: styler, src: doc.Source}
 	output := renderBlocks(doc.Blocks, ctx)
-	if !resolved.color {
+	if resolved.color == types.ColorNone {
 		output = wrap.StripANSI(output)
 	}
 	return output
-}
-
-// Strip renders markdown with color and hyperlinks disabled, returning plain text.
-func Strip(markdown string, opts types.RenderOptions) string {
-	f := false
-	opts.Color = &f
-	opts.Hyperlinks = &f
-	return Render(markdown, opts)
-}
-
-// CreateRenderer returns a reusable renderer with fixed options.
-func CreateRenderer(opts types.RenderOptions) func(string) string {
-	return func(md string) string {
-		return Render(md, opts)
-	}
 }
 
 // dedent removes the minimum common leading whitespace from all non-empty lines.

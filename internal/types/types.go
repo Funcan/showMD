@@ -61,22 +61,40 @@ type Theme struct {
 	TableCell   StyleIntent
 }
 
+// ColorProfile is the colour capability of the output terminal. The zero value
+// (ColorNone) disables all ANSI styling.
+type ColorProfile int
+
+const (
+	// ColorNone emits plain text: no ANSI styling and no OSC-8 hyperlinks.
+	ColorNone ColorProfile = iota
+	// Color16 uses the basic 16 ANSI colours; other colours are approximated.
+	Color16
+	// Color256 uses the xterm 256-colour palette; hex colours are approximated.
+	Color256
+	// ColorTrue uses 24-bit colour.
+	ColorTrue
+)
+
+// Terminal describes the capabilities of the output device. The renderer never
+// probes the real terminal; callers must fill this in. The zero value renders
+// plain text at 80 columns.
+type Terminal struct {
+	// Width is the column count to wrap at. 0 means 80 when wrapping, or no
+	// fixed width when RenderOptions.Wrap is false.
+	Width int
+	// Color is the colour capability of the terminal.
+	Color ColorProfile
+	// Hyperlinks enables OSC-8 hyperlinks. Ignored when Color is ColorNone.
+	Hyperlinks bool
+}
+
 // RenderOptions controls how Markdown is rendered to ANSI. All fields are
-// optional; unset pointer fields mean "use the default".
-//
-// This is a direct port of the RenderOptions interface from src/types.ts.
+// optional; unset pointer fields mean "use the default". Terminal capabilities
+// are passed separately as a Terminal.
 type RenderOptions struct {
 	// Wrap enables hard word-wrapping. Default true.
 	Wrap *bool
-	// Width is the wrap column. Used only when Wrap is true.
-	// Defaults to the TTY width or 80.
-	Width *int
-	// Color enables ANSI escape output. Defaults to true when stdout is a TTY.
-	// When false, all ANSI and OSC sequences are stripped from output.
-	Color *bool
-	// Hyperlinks enables OSC-8 hyperlinks. Defaults to auto-detect.
-	// Forced off when Color is false.
-	Hyperlinks *bool
 	// Theme is either a ThemeName string or a custom Theme object.
 	// Defaults to ThemeDefault.
 	ThemeName ThemeName

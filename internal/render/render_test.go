@@ -10,19 +10,7 @@ import (
 
 // Helper: render with color/hyperlinks disabled for deterministic output.
 func renderPlain(md string) string {
-	f := false
-	return render.Render(md, types.RenderOptions{
-		Color:      &f,
-		Hyperlinks: &f,
-	})
-}
-
-func stripPlain(md string) string {
-	f := false
-	return render.Strip(md, types.RenderOptions{
-		Color:      &f,
-		Hyperlinks: &f,
-	})
+	return render.Render(md, types.Terminal{}, types.RenderOptions{})
 }
 
 // --- Headings ---
@@ -122,11 +110,8 @@ func TestRender_FencedCodeBlock_NoBox_SingleLine(t *testing.T) {
 
 func TestRender_CodeBlock_DisabledBox(t *testing.T) {
 	f := false
-	ff := false
-	out := render.Render("```go\nfunc main() {}\n```\n", types.RenderOptions{
-		Color:      &ff,
-		Hyperlinks: &ff,
-		CodeBox:    &f,
+	out := render.Render("```go\nfunc main() {}\n```\n", types.Terminal{}, types.RenderOptions{
+		CodeBox: &f,
 	})
 	if strings.Contains(out, "┌") {
 		t.Errorf("expected no box when CodeBox=false, got: %q", out)
@@ -161,10 +146,7 @@ func TestRender_Table_Unicode(t *testing.T) {
 }
 
 func TestRender_Table_ASCII(t *testing.T) {
-	f := false
-	out := render.Render("| A | B |\n|---|---|\n| 1 | 2 |\n", types.RenderOptions{
-		Color:       &f,
-		Hyperlinks:  &f,
+	out := render.Render("| A | B |\n|---|---|\n| 1 | 2 |\n", types.Terminal{}, types.RenderOptions{
 		TableBorder: types.TableBorderASCII,
 	})
 	if !strings.Contains(out, "+") {
@@ -173,10 +155,7 @@ func TestRender_Table_ASCII(t *testing.T) {
 }
 
 func TestRender_Table_None(t *testing.T) {
-	f := false
-	out := render.Render("| A | B |\n|---|---|\n| 1 | 2 |\n", types.RenderOptions{
-		Color:       &f,
-		Hyperlinks:  &f,
+	out := render.Render("| A | B |\n|---|---|\n| 1 | 2 |\n", types.Terminal{}, types.RenderOptions{
 		TableBorder: types.TableBorderNone,
 	})
 	if strings.Contains(out, "┌") || strings.Contains(out, "+") {
@@ -263,29 +242,15 @@ func TestRender_LinkMailto(t *testing.T) {
 	}
 }
 
-// --- Strip ---
+// --- Plain output ---
 
-func TestStrip_RemovesANSI(t *testing.T) {
-	// Strip should produce plain text with no ANSI codes.
-	out := stripPlain("# Hello\n\nworld\n")
+func TestRender_ZeroTerminalIsPlain(t *testing.T) {
+	// The zero Terminal should produce plain text with no ANSI codes.
+	out := renderPlain("# Hello\n\nworld\n")
 	if strings.Contains(out, "\x1b") {
-		t.Errorf("Strip should remove ANSI codes, got: %q", out)
+		t.Errorf("expected no ANSI codes, got: %q", out)
 	}
 	if !strings.Contains(out, "Hello") {
-		t.Errorf("expected heading text, got: %q", out)
-	}
-}
-
-// --- CreateRenderer ---
-
-func TestCreateRenderer(t *testing.T) {
-	f := false
-	renderer := render.CreateRenderer(types.RenderOptions{
-		Color:      &f,
-		Hyperlinks: &f,
-	})
-	out := renderer("# Test\n")
-	if !strings.Contains(out, "Test") {
 		t.Errorf("expected heading text, got: %q", out)
 	}
 }
@@ -321,9 +286,8 @@ func TestRender_LangLabelHeuristic(t *testing.T) {
 
 func TestRender_WrapDisabled(t *testing.T) {
 	f := false
-	ff := false
 	out := render.Render("A very long paragraph that should not be wrapped at all because wrap is disabled.\n",
-		types.RenderOptions{Color: &ff, Hyperlinks: &ff, Wrap: &f})
+		types.Terminal{}, types.RenderOptions{Wrap: &f})
 	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
 	if len(lines) != 1 {
 		t.Errorf("expected 1 line when wrap=false, got %d: %q", len(lines), out)
@@ -331,10 +295,9 @@ func TestRender_WrapDisabled(t *testing.T) {
 }
 
 func TestRender_WrapEnabled_WrapsAtWidth(t *testing.T) {
-	f := false
 	w := 10
-	out := render.Strip("one two three four five six seven eight nine ten",
-		types.RenderOptions{Color: &f, Hyperlinks: &f, Wrap: boolTrue(), Width: &w})
+	out := render.Render("one two three four five six seven eight nine ten",
+		types.Terminal{Width: w}, types.RenderOptions{Wrap: boolTrue()})
 	lines := strings.Split(out, "\n")
 	for _, line := range lines {
 		if len(line) > 10 {
@@ -346,40 +309,36 @@ func TestRender_WrapEnabled_WrapsAtWidth(t *testing.T) {
 // --- Soft and hard line breaks ---
 
 func TestRender_SoftLineBreak_CollapsesToSpace(t *testing.T) {
-	f := false
 	w := 80
-	out := strings.TrimRight(render.Strip("Hello\nworld",
-		types.RenderOptions{Color: &f, Hyperlinks: &f, Wrap: boolTrue(), Width: &w}), "\n")
+	out := strings.TrimRight(render.Render("Hello\nworld",
+		types.Terminal{Width: w}, types.RenderOptions{Wrap: boolTrue()}), "\n")
 	if out != "Hello world" {
 		t.Errorf("soft break should collapse to space, got %q", out)
 	}
 }
 
 func TestRender_SoftLineBreak_TrimsIndentation(t *testing.T) {
-	f := false
 	w := 200
-	out := strings.TrimRight(render.Strip("Hello\n  world",
-		types.RenderOptions{Color: &f, Hyperlinks: &f, Width: &w}), "\n")
+	out := strings.TrimRight(render.Render("Hello\n  world",
+		types.Terminal{Width: w}, types.RenderOptions{}), "\n")
 	if out != "Hello world" {
 		t.Errorf("soft break should trim indentation, got %q", out)
 	}
 }
 
 func TestRender_HardLineBreak_KeepsSplit(t *testing.T) {
-	f := false
 	w := 80
-	out := strings.TrimRight(render.Strip("line one  \nline two",
-		types.RenderOptions{Color: &f, Hyperlinks: &f, Wrap: boolTrue(), Width: &w}), "\n")
+	out := strings.TrimRight(render.Render("line one  \nline two",
+		types.Terminal{Width: w}, types.RenderOptions{Wrap: boolTrue()}), "\n")
 	if len(strings.Split(out, "\n")) < 2 {
 		t.Errorf("hard break (two-space) should produce multiple lines, got %q", out)
 	}
 }
 
 func TestRender_HardBreakWithSurroundingSoftBreaks(t *testing.T) {
-	f := false
 	w := 200
-	out := strings.TrimRight(render.Strip("a\nb  \nc",
-		types.RenderOptions{Color: &f, Hyperlinks: &f, Width: &w}), "\n")
+	out := strings.TrimRight(render.Render("a\nb  \nc",
+		types.Terminal{Width: w}, types.RenderOptions{}), "\n")
 	if !strings.Contains(out, "a b\nc") {
 		t.Errorf("expected 'a b\\nc', got %q", out)
 	}
@@ -388,7 +347,7 @@ func TestRender_HardBreakWithSurroundingSoftBreaks(t *testing.T) {
 // --- Inline HTML ---
 
 func TestRender_InlineHTML_Ignored(t *testing.T) {
-	out := strings.TrimRight(stripPlain("<div>ignored</div>"), "\n")
+	out := strings.TrimRight(renderPlain("<div>ignored</div>"), "\n")
 	if out != "" {
 		t.Errorf("inline HTML should be ignored, got %q", out)
 	}
@@ -397,18 +356,15 @@ func TestRender_InlineHTML_Ignored(t *testing.T) {
 // --- Hyperlinks ---
 
 func TestRender_Hyperlinks_URLSuffix_WhenOff(t *testing.T) {
-	out := stripPlain("[link](https://example.com)")
+	out := renderPlain("[link](https://example.com)")
 	if !strings.Contains(out, "link (https://example.com)") {
 		t.Errorf("expected URL suffix when hyperlinks off, got %q", out)
 	}
 }
 
 func TestRender_Hyperlinks_OSC8_WhenEnabled(t *testing.T) {
-	tr := true
-	out := render.Render("[x](https://example.com)", types.RenderOptions{
-		Color:      &tr,
-		Hyperlinks: &tr,
-		Wrap:       boolFalse(),
+	out := render.Render("[x](https://example.com)", types.Terminal{Color: types.ColorTrue, Hyperlinks: true}, types.RenderOptions{
+		Wrap: boolFalse(),
 	})
 	if !strings.Contains(out, "\x1b]8;;https://example.com\x07x\x1b]8;;\x07") {
 		t.Errorf("expected OSC-8 hyperlink, got %q", out)
@@ -416,12 +372,8 @@ func TestRender_Hyperlinks_OSC8_WhenEnabled(t *testing.T) {
 }
 
 func TestRender_Hyperlinks_OSC8_DisabledWhenColorFalse(t *testing.T) {
-	fl := false
-	tr := true
-	out := render.Render("[x](https://example.com)", types.RenderOptions{
-		Color:      &fl,
-		Hyperlinks: &tr,
-		Wrap:       boolFalse(),
+	out := render.Render("[x](https://example.com)", types.Terminal{Hyperlinks: true}, types.RenderOptions{
+		Wrap: boolFalse(),
 	})
 	if strings.Contains(out, "\x1b]8;;") {
 		t.Errorf("OSC-8 should be disabled when color=false, got %q", out)
@@ -434,7 +386,7 @@ func TestRender_Hyperlinks_OSC8_DisabledWhenColorFalse(t *testing.T) {
 // --- Loose lists ---
 
 func TestRender_LooseList_HasBlankLineBetweenItems(t *testing.T) {
-	out := stripPlain("- item 1\n\n- item 2")
+	out := renderPlain("- item 1\n\n- item 2")
 	blanks := 0
 	for _, l := range strings.Split(out, "\n") {
 		if l == "" {
@@ -448,9 +400,8 @@ func TestRender_LooseList_HasBlankLineBetweenItems(t *testing.T) {
 
 func TestRender_List_SoftBreakInsideItem(t *testing.T) {
 	md := "- Section IV: A concluding line that was \"typed on 2025-12-18 with a\n  stubborn cursor.\""
-	f := false
 	w := 200
-	out := strings.TrimRight(render.Strip(md, types.RenderOptions{Color: &f, Hyperlinks: &f, Width: &w}), "\n")
+	out := strings.TrimRight(render.Render(md, types.Terminal{Width: w}, types.RenderOptions{}), "\n")
 	if !strings.Contains(out, "with a stubborn cursor.") {
 		t.Errorf("soft break inside list item should collapse, got %q", out)
 	}
@@ -464,12 +415,8 @@ func TestRender_List_SoftBreakInsideItem(t *testing.T) {
 func TestRender_Theme_InlineVsBlockCodeDistinct(t *testing.T) {
 	inlineColor := "\x1b[31m" // red
 	blockColor := "\x1b[32m"  // green
-	tr := true
-	fl := false
-	out := render.Render("`inline`\n\n```\nblock\n```", types.RenderOptions{
-		Color:      &tr,
-		Hyperlinks: &fl,
-		Wrap:       boolFalse(),
+	out := render.Render("`inline`\n\n```\nblock\n```", types.Terminal{Color: types.ColorTrue}, types.RenderOptions{
+		Wrap: boolFalse(),
 		Theme: &types.Theme{
 			InlineCode: types.StyleIntent{Color: "red"},
 			BlockCode:  types.StyleIntent{Color: "green"},
@@ -484,13 +431,9 @@ func TestRender_Theme_InlineVsBlockCodeDistinct(t *testing.T) {
 }
 
 func TestRender_Theme_CodeFallback(t *testing.T) {
-	tr := true
-	fl := false
-	out := render.Render("`x`\n\n```\ny\n```", types.RenderOptions{
-		Color:      &tr,
-		Hyperlinks: &fl,
-		Wrap:       boolFalse(),
-		Theme:      &types.Theme{Code: types.StyleIntent{Color: "red"}},
+	out := render.Render("`x`\n\n```\ny\n```", types.Terminal{Color: types.ColorTrue}, types.RenderOptions{
+		Wrap:  boolFalse(),
+		Theme: &types.Theme{Code: types.StyleIntent{Color: "red"}},
 	})
 	if !strings.Contains(out, "\x1b[31m") {
 		t.Errorf("expected red from code fallback, got %q", out)
@@ -498,13 +441,9 @@ func TestRender_Theme_CodeFallback(t *testing.T) {
 }
 
 func TestRender_DefaultTheme_Colors(t *testing.T) {
-	tr := true
-	fl := false
-	out := render.Render("`inline`\n\n```\nblock\n```\n\n# H", types.RenderOptions{
-		Color:      &tr,
-		Hyperlinks: &fl,
-		Wrap:       boolFalse(),
-		CodeBox:    boolFalse(),
+	out := render.Render("`inline`\n\n```\nblock\n```\n\n# H", types.Terminal{Color: types.ColorTrue}, types.RenderOptions{
+		Wrap:    boolFalse(),
+		CodeBox: boolFalse(),
 	})
 	if !strings.Contains(out, "\x1b[36m") { // cyan inline code
 		t.Errorf("expected cyan inline code, got %q", out)
@@ -515,11 +454,7 @@ func TestRender_DefaultTheme_Colors(t *testing.T) {
 }
 
 func TestRender_HighlighterHook(t *testing.T) {
-	tr := true
-	fl := false
-	out := render.Render("```\ncode\n```", types.RenderOptions{
-		Color:       &tr,
-		Hyperlinks:  &fl,
+	out := render.Render("```\ncode\n```", types.Terminal{Color: types.ColorTrue}, types.RenderOptions{
 		Wrap:        boolFalse(),
 		Highlighter: func(code, _ string) string { return strings.ToUpper(code) },
 	})
@@ -546,10 +481,7 @@ func TestRender_ParagraphSpacing_BlankLineByDefault(t *testing.T) {
 }
 
 func TestRender_ParagraphSpacing_SquashRemovesBlankLine(t *testing.T) {
-	f := false
-	out := render.Render("first paragraph\n\nsecond paragraph\n", types.RenderOptions{
-		Color:            &f,
-		Hyperlinks:       &f,
+	out := render.Render("first paragraph\n\nsecond paragraph\n", types.Terminal{}, types.RenderOptions{
 		SquashParagraphs: true,
 	})
 	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
@@ -571,11 +503,8 @@ func TestRender_BlockquoteDefaultPrefix(t *testing.T) {
 }
 
 func TestRender_BlockquoteCustomPrefix(t *testing.T) {
-	f := false
 	p := "│ "
-	out := render.Render("> quoted\n", types.RenderOptions{
-		Color:       &f,
-		Hyperlinks:  &f,
+	out := render.Render("> quoted\n", types.Terminal{}, types.RenderOptions{
 		QuotePrefix: &p,
 	})
 	if !strings.Contains(out, "│ quoted") {

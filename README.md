@@ -75,7 +75,7 @@ showmd --no-color README.md --out plain.txt
 | `--out FILE` | stdout | Output file |
 | `--width N` | TTY width or 80 | Column wrap width |
 | `--no-wrap` | — | Disable word-wrapping |
-| `--no-color` | — | Disable all ANSI/OSC output |
+| `--no-color` | — | Disable all ANSI/OSC output (`NO_COLOR` is also honoured) |
 | `--no-links` | — | Disable OSC-8 hyperlinks |
 | `--theme NAME` | `default` | Color theme: `default` `dim` `bright` `solarized` `monochrome` `contrast` |
 | `--list-indent N` | `2` | Spaces per list nesting level |
@@ -96,19 +96,20 @@ showmd --no-color README.md --out plain.txt
 ## Library API
 
 ```go
-import "github.com/funcan/showmd/internal/render"
-import "github.com/funcan/showmd/internal/types"
+import "github.com/funcan/showmd"
 
-// Render Markdown to an ANSI string.
-out := render.Render(markdown, types.RenderOptions{})
-
-// Strip all ANSI codes from the result (plain text).
-plain := render.Strip(markdown, types.RenderOptions{})
-
-// Create a reusable renderer function.
-renderer := render.CreateRenderer(types.RenderOptions{})
-out = renderer(markdown)
+out := showmd.Render(markdown, showmd.Terminal{
+	Width:      100,              // 0 = 80 (or unlimited with Wrap disabled)
+	Color:      showmd.ColorTrue, // ColorNone (plain text), Color16, Color256, ColorTrue
+	Hyperlinks: true,             // OSC-8 links; ignored with ColorNone
+}, showmd.Options{
+	ThemeName: showmd.ThemeSolarized,
+})
 ```
+
+The library never probes the terminal or environment; the caller describes
+the output device with `Terminal`. The zero `Terminal` renders plain text at 80
+columns. Colours the profile can't represent are approximated.
 
 ---
 

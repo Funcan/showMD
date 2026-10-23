@@ -21,14 +21,10 @@ func renderGolden(t *testing.T) string {
 	if err != nil {
 		t.Fatalf("read sample.md: %v", err)
 	}
-	f := false
 	tr := true
 	w := 80
-	return render.Render(string(src), types.RenderOptions{
-		Color:      &f,
-		Hyperlinks: &f,
-		Wrap:       &tr,
-		Width:      &w,
+	return render.Render(string(src), types.Terminal{Width: w}, types.RenderOptions{
+		Wrap: &tr,
 	})
 }
 
