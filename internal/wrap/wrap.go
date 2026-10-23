@@ -10,9 +10,9 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-// ansiEscape matches ANSI CSI sequences (colors, attributes) and OSC sequences
+// ANSIEscape matches ANSI CSI sequences (colors, attributes) and OSC sequences
 // (e.g. OSC-8 hyperlinks), so we can strip them before measuring visible width.
-var ansiEscape = regexp.MustCompile(
+var ANSIEscape = regexp.MustCompile(
 	`\x1b(?:` +
 		`\[[0-9;?]*[A-Za-z]` + // CSI sequences: ESC [ ... letter
 		`|` +
@@ -24,7 +24,7 @@ var ansiEscape = regexp.MustCompile(
 
 // StripANSI removes all ANSI escape sequences from s.
 func StripANSI(s string) string {
-	return ansiEscape.ReplaceAllString(s, "")
+	return ANSIEscape.ReplaceAllString(s, "")
 }
 
 // VisibleWidth returns the visible terminal width of s, ignoring any ANSI

@@ -23,6 +23,15 @@ func tableStrip(md string, width int, opts types.RenderOptions) string {
 	return render.Render(md, types.Terminal{Width: width}, opts)
 }
 
+func TestTable_LongCellUsesAvailableWidth(t *testing.T) {
+	long := strings.Repeat("word ", 12) + "end" // 63 columns
+	md := "| A | B |\n| --- | --- |\n| x | " + long + " |\n"
+	out := tableStrip(md, 100, noColorTable())
+	if !strings.Contains(out, long) {
+		t.Errorf("expected untruncated cell when it fits the width, got:\n%s", out)
+	}
+}
+
 func TestTable_DoesNotLinkifyUnderscores(t *testing.T) {
 	md := "| Filename | Size |\n| --- | --- |\n| icon_16x16.png | 16 |\n| icon_16x16@2x.png | 32 |\n"
 	opts := noColorTable(func(o *types.RenderOptions) {

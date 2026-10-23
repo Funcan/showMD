@@ -56,6 +56,20 @@ func TestTruncateCell(t *testing.T) {
 			ellipsis: "🔥", // 2 columns wide
 			want:     "",
 		},
+		{
+			name:     "ANSI escapes are kept intact and not counted",
+			text:     "\x1b[36mhello world\x1b[0m",
+			width:    8,
+			ellipsis: "…",
+			want:     "\x1b[36mhello w…\x1b[0m",
+		},
+		{
+			name:     "hyperlink is closed after the cut",
+			text:     "\x1b]8;;https://x.com\x07hello world\x1b]8;;\x07",
+			width:    6,
+			ellipsis: "…",
+			want:     "\x1b]8;;https://x.com\x07hello…\x1b]8;;\x07",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

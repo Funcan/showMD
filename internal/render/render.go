@@ -131,10 +131,7 @@ func dedent(s string) string {
 	return strings.Join(out, "\n")
 }
 
-const (
-	hrWidth = 40
-	maxCol  = 40
-)
+const hrWidth = 40
 
 var reLangLabel = regexp.MustCompile(`^\[([^\]]+)\]$`)
 

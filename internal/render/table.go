@@ -2,6 +2,7 @@ package render
 
 import (
 	"strings"
+	"unicode/utf8"
 
 	"github.com/funcan/showmd/internal/types"
 	"github.com/funcan/showmd/internal/wrap"
@@ -93,7 +94,7 @@ func renderTable(n ast.Node, ctx *renderContext) string {
 				break
 			}
 			padded := padStr + cell + padStr
-			w := min(maxCol, wrap.VisibleWidth(padded))
+			w := wrap.VisibleWidth(padded)
 			if w > widths[idx] {
 				widths[idx] = w
 			}
@@ -269,6 +270,8 @@ func padCell(text string, width int, align east.Alignment) string {
 }
 
 // truncateCell truncates text to width visible columns, adding ellipsis.
+// ANSI escape sequences are preserved (even past the cut) so that styles and
+// hyperlinks opened before the cut are still closed.
 func truncateCell(text string, width int, ellipsis string) string {
 	if wrap.VisibleWidth(text) <= width {
 		return text
@@ -278,23 +281,33 @@ func truncateCell(text string, width int, ellipsis string) string {
 		// Not enough room even for the ellipsis; return nothing.
 		return ""
 	}
-	if width == ellipsisWidth {
-		return ellipsis
-	}
 	target := width - ellipsisWidth
-	// Accumulate runes until we'd exceed the target column budget.
-	var col int
-	runes := []rune(text)
-	i := 0
-	for i < len(runes) {
-		rw := wrap.VisibleWidth(string(runes[i]))
+	escapes := wrap.ANSIEscape.FindAllStringIndex(text, -1)
+	var sb strings.Builder
+	col := 0
+	cut := false
+	for i := 0; i < len(text); {
+		if len(escapes) > 0 && escapes[0][0] == i {
+			sb.WriteString(text[i:escapes[0][1]])
+			i = escapes[0][1]
+			escapes = escapes[1:]
+			continue
+		}
+		r, size := utf8.DecodeRuneInString(text[i:])
+		i += size
+		if cut {
+			continue
+		}
+		rw := wrap.VisibleWidth(string(r))
 		if col+rw > target {
-			break
+			sb.WriteString(ellipsis)
+			cut = true
+			continue
 		}
 		col += rw
-		i++
+		sb.WriteRune(r)
 	}
-	return string(runes[:i]) + ellipsis
+	return sb.String()
 }
 
 // getAlign returns the alignment for column idx, defaulting to AlignLeft.
